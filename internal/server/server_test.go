@@ -93,3 +93,26 @@ func TestTransactionGetHandler_Error(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Contains(t, w.Body.String(), `{"error":"transaction id not found"}`)
 }
+
+func TestTransactionPostHandler(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/tx", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `{"success":true}`)
+}
+
+func TestTransactionPostHandler_Error(t *testing.T) {
+	// Simulate an error in TransactionPost handler, for example, due to missing data
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/tx", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), `{"error":"missing data"}`)
+}
