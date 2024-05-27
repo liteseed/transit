@@ -17,7 +17,7 @@ func verifyHeaders(c *gin.Context) (*uploadRequestHeader, error) {
 	if err := c.ShouldBindHeader(header); err != nil {
 		return nil, err
 	}
-	if *header.ContentLength == 0 || *header.ContentLength > MAX_DATA_SIZE {
+	if *header.ContentLength == 0 || uint(*header.ContentLength) > MAX_DATA_SIZE {
 		return nil, fmt.Errorf("content-length: supported range 1B - %dB", MAX_DATA_SIZE)
 	}
 	if *header.ContentType != CONTENT_TYPE_OCTET_STREAM {

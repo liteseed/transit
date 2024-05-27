@@ -1,45 +1,78 @@
 package server
 
 import (
-	"log"
+	"context"
+	"net/http"
 
 	"github.com/everFinance/goar"
 	"github.com/gin-gonic/gin"
-
-	"github.com/liteseed/aogo"
+	"github.com/liteseed/sdk-go/contract"
+	"github.com/liteseed/transit/internal/database"
+	"github.com/liteseed/transit/internal/store"
 )
 
 const (
 	CONTENT_TYPE_OCTET_STREAM = "application/octet-stream"
-	MAX_DATA_SIZE             = 1_073_824
-	MAX_DATA_ITEM_SIZE        = 1_073_824
+	MAX_DATA_SIZE             = uint(2 * 1024 * 1024 * 1024)
 )
 
-type Context struct {
-	ao     *aogo.AO
-	engine *gin.Engine
-	signer *goar.ItemSigner
+type Server struct {
+	contract *contract.Contract
+	database *database.Database
+	gateway  string
+	server   *http.Server
+	store    *store.Store
+	wallet   *goar.Wallet
 }
 
-func New(ao *aogo.AO, signer *goar.ItemSigner) *Context {
-	engine := gin.New()
-
-	engine.Use(gin.Recovery())
-	s := &Context{ao: ao, engine: engine, signer: signer}
-
-	s.engine.Use(ErrorHandler)
-	s.engine.GET("/", s.Status)
-	s.engine.GET("/price/:bytes", s.getPrice)
-	s.engine.GET("/bundlers", s.GetBundlers)
-	s.engine.POST("/data", s.uploadData)
-	s.engine.GET("/data/:id", s.getData)
-
-	return s
-}
-
-func (s *Context) Run(port string) {
-	err := s.engine.Run(port)
-	if err != nil {
-		log.Fatalln("failed to start server", err)
+func New(port string, version string, gateway string, options ...func(*Server)) (*Server, error) {
+	s := &Server{}
+	for _, o := range options {
+		o(s)
 	}
+	engine := gin.New()
+	engine.Use(gin.Recovery())
+
+	engine.Use(ErrorHandler)
+	engine.GET("/", s.Status)
+	engine.GET("/price/:bytes", s.PriceGet)
+	engine.POST("/upload", s.DataPost)
+	engine.GET("/tx/:id", s.TransactionGet)
+	engine.POST("/tx", s.TransactionPost)
+
+	s.server = &http.Server{
+		Addr:    port,
+		Handler: engine,
+	}
+	return s, nil
+}
+
+func WithContracts(contract *contract.Contract) func(*Server) {
+	return func(c *Server) {
+		c.contract = contract
+	}
+}
+
+func WithDatabase(db *database.Database) func(*Server) {
+	return func(c *Server) {
+		c.database = db
+	}
+}
+
+func WithStore(s *store.Store) func(*Server) {
+	return func(c *Server) {
+		c.store = s
+	}
+}
+func WithWallet(w *goar.Wallet) func(*Server) {
+	return func(c *Server) {
+		c.wallet = w
+	}
+}
+func (s *Server) Start() error {
+	return s.server.ListenAndServe()
+}
+
+func (s *Server) Shutdown() error {
+	return s.server.Shutdown(context.TODO())
 }

@@ -9,12 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type UploadDataResponse struct {
+type PostDataResponse struct {
 	Id string `json:"id"`
 }
 
 // POST /data
-func (s *Context) uploadData(c *gin.Context) {
+func (s *Server) DataPost(c *gin.Context) {
 	header, err := verifyHeaders(c)
 	if err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
@@ -35,5 +35,5 @@ func (s *Context) uploadData(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, UploadDataResponse{Id: item.Id})
+	c.JSON(http.StatusCreated, PostDataResponse{Id: item.Id})
 }

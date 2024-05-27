@@ -3,19 +3,34 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/everFinance/goar"
-	"github.com/liteseed/aogo"
+	"github.com/liteseed/sdk-go/contract"
+	"github.com/liteseed/transit/internal/database"
 	"github.com/liteseed/transit/internal/server"
+	"github.com/liteseed/transit/internal/store"
 )
 
+var Version string
+
 type StartConfig struct {
-	Port   string
-	Signer string
+	Database string
+	Gateway  string
+	Port     string
+	Process  string
+	Signer   string
+	Store    string
 }
 
 func main() {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
 	configData, err := os.ReadFile("./config.json")
 	if err != nil {
 		log.Fatalln(err)
@@ -27,26 +42,43 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	db, err := database.New(config.Database)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	ao, err := aogo.New()
+	wallet, err := goar.NewWalletFromPath(config.Signer, config.Gateway)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	process := config.Process
+
+	contracts := contract.New(process, wallet.Signer)
+
+	store := store.New(config.Store)
+
+	s, err := server.New(":8000", Version, config.Gateway, server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet), server.WithStore(store))
 	if err != nil {
 		log.Fatal(err)
 	}
+	go func() {
+		err := s.Start()
+		if err != http.ErrServerClosed {
+			log.Fatal("failed to start server", err)
+		}
+	}()
 
-	signer, err := goar.NewSignerFromPath(config.Signer)
-	if err != nil {
-		log.Fatal(err)
+	<-quit
+
+	log.Println("Shutdown")
+
+	if err = store.Shutdown(); err != nil {
+		log.Fatal("failed to shutdown", err)
 	}
 
-	itemSigner, err := goar.NewItemSigner(signer)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	s := server.New(ao, itemSigner)
-	s.Run(":8000")
-
-	if err != nil {
-		log.Fatal(err)
+	time.Sleep(2 * time.Second)
+	if err = s.Shutdown(); err != nil {
+		log.Fatal("failed to shutdown", err)
 	}
 }
