@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/liteseed/sdk-go/contract"
 	"github.com/liteseed/transit/internal/database"
-	"github.com/liteseed/transit/internal/store"
 )
 
 const (
