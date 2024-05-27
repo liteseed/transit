@@ -1,20 +1,27 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"math/big"
 	"net/http"
+	"strconv"
 
 	"github.com/everFinance/goar/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/liteseed/transit/internal/database/schema"
 )
 
-type TransactionPostRequestHeader struct {
+type DataItemPostRequestHeader struct {
 	ContentType   *string `header:"content-type" binding:"required"`
-	ContentLength *int    `header:"content-length" binding:"required"`
+	ContentLength *string `header:"content-length" binding:"required"`
+	TransactionID *string `header:"transaction-id" binding:"required"`
 }
 
-type TransactionPostResponse struct {
+type DataItemPostResponse struct {
 	ID                  string   `json:"id"`
 	Owner               string   `json:"owner"`
 	DataCaches          []string `json:"dataCaches"`
@@ -24,16 +31,44 @@ type TransactionPostResponse struct {
 	Version             string   `json:"version"`
 }
 
-func parseHeaders(context *gin.Context) (*TransactionPostRequestHeader, error) {
-	header := &TransactionPostRequestHeader{}
+func postData(url string, b []byte) (*DataItemPostResponse, error) {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
+	req.Header.Set("content-type", "application/octet-stream")
+	req.Header.Set("content-length", fmt.Sprint(len(b)))
+
+	if err != nil {
+		return nil, err
+	}
+
+	c := http.DefaultClient
+	resp, err := c.Do(req)
+	if err != nil || resp.StatusCode >= 400 {
+		return nil, errors.New("failed to post data to bundler")
+	}
+	var res DataItemPostResponse
+	r, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(r, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func parseHeaders(context *gin.Context) (*DataItemPostRequestHeader, error) {
+	header := &DataItemPostRequestHeader{}
 	if err := context.ShouldBindHeader(header); err != nil {
 		return nil, err
 	}
-	if *header.ContentLength == 0 || uint(*header.ContentLength) > MAX_DATA_SIZE {
-		return nil, fmt.Errorf("content-length: supported range 1B - %dB", MAX_DATA_SIZE)
-	}
 	if *header.ContentType != CONTENT_TYPE_OCTET_STREAM {
 		return nil, fmt.Errorf("content-type: unsupported")
+	}
+	if *header.TransactionID != "" {
+		return nil, fmt.Errorf("payment transaction-id is required")
+	}
+	if *header.ContentLength != "" {
+		return nil, fmt.Errorf("content-length is required")
 	}
 	return header, nil
 }
@@ -46,11 +81,36 @@ func parseBody(context *gin.Context, contentLength int) ([]byte, error) {
 	if len(rawData) != contentLength {
 		return nil, fmt.Errorf("content-length, body: length mismatch (%d, %d)", contentLength, len(rawData))
 	}
+
 	return rawData, nil
 }
 
+func (s *Server) checkPrice(transactionID string, contentLength string) (uint64, error) {
+	price, err := s.PriceOfUpload(contentLength)
+	if err != nil {
+		return 0, err
+	}
+
+	tx, err := s.wallet.Client.GetTransactionByID(transactionID)
+	if err != nil {
+		return 0, err
+	}
+	t := big.NewInt(0)
+	t.SetString(string(tx.Quantity), 10)
+	payment := t.Uint64()
+
+	if err != nil {
+		return 0, err
+	}
+
+	if payment < price {
+		return 0, errors.New("not enough ar to upload, contact support: hello@liteseed.xyz")
+	}
+	return payment, nil
+}
+
 // POST /data-item
-func (s *Server) TransactionPost(context *gin.Context) {
+func (s *Server) DataItemPost(context *gin.Context) {
 	header, err := parseHeaders(context)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -58,7 +118,22 @@ func (s *Server) TransactionPost(context *gin.Context) {
 		return
 	}
 
-	rawData, err := parseBody(context, *header.ContentLength)
+	transactionID := *header.TransactionID
+	contentLength, err := strconv.Atoi(*header.ContentLength)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		context.Error(err)
+		return
+	}
+
+	payment, err := s.checkPrice(transactionID, *header.ContentLength)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "price verification failed"})
+		context.Error(err)
+		return
+	}
+
+	rawData, err := parseBody(context, contentLength)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		context.Error(err)
@@ -67,21 +142,28 @@ func (s *Server) TransactionPost(context *gin.Context) {
 
 	dataItem, err := utils.DecodeBundleItem(rawData)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to decode bundle"})
+		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to decode data item"})
 		context.Error(err)
 		return
 	}
 
 	err = utils.VerifyBundleItem(*dataItem)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to verify bundle"})
+		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to verify data item"})
 		context.Error(err)
 		return
 	}
 
-	p, err := s.wallet.Client.GetTransactionPrice(*header.ContentLength, nil)
+	staker, err := s.contract.Initiate(dataItem.Id, contentLength)
 	if err != nil {
-		context.JSON(http.StatusFailedDependency, gin.H{"error": "failed to query gateway"})
+		context.JSON(http.StatusFailedDependency, gin.H{"error": "failed to find staker"})
+		context.Error(err)
+		return
+	}
+	res, err := postData(staker.URL, rawData)
+
+	if err != nil {
+		context.JSON(http.StatusFailedDependency, gin.H{"error": "failed to post to assigned staker"})
 		context.Error(err)
 		return
 	}
@@ -89,14 +171,19 @@ func (s *Server) TransactionPost(context *gin.Context) {
 	o := &schema.Order{
 		ID:     dataItem.Id,
 		Status: schema.Queued,
-		Price:  uint64(p),
+		Price:  payment,
+		Bundler: schema.Bundler{
+			Address: staker.ID,
+			URL:     staker.URL,
+		},
 	}
 
 	err = s.database.CreateOrder(o)
 	if err != nil {
-		context.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to create order"})
+		context.Error(err)
 		return
 	}
 
-	context.JSON(http.StatusCreated, "")
+	context.JSON(http.StatusCreated, res)
 }

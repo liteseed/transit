@@ -13,6 +13,7 @@ import (
 	"github.com/liteseed/sdk-go/contract"
 	"github.com/liteseed/transit/internal/database"
 	"github.com/liteseed/transit/internal/server"
+	"github.com/liteseed/transit/internal/store"
 )
 
 var Version string
@@ -55,7 +56,9 @@ func main() {
 
 	contracts := contract.New(process, wallet.Signer)
 
-	s, err := server.New(":8000", Version, config.Gateway, server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet))
+	store := store.New(config.Store)
+
+	s, err := server.New(":8000", Version, config.Gateway, server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet), server.WithStore(store))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,6 +72,10 @@ func main() {
 	<-quit
 
 	log.Println("Shutdown")
+
+	if err = store.Shutdown(); err != nil {
+		log.Fatal("failed to shutdown", err)
+	}
 
 	time.Sleep(2 * time.Second)
 	if err = s.Shutdown(); err != nil {

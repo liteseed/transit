@@ -1,7 +1,24 @@
 package server
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
 
-func (s *Server) TransactionGet(c *gin.Context) {
+	"github.com/gin-gonic/gin"
+)
 
+// Get /tx
+func (s *Server) DataItemGet(context *gin.Context) {
+	id := context.Param("id")
+
+	raw, err := s.store.Get(id)
+	if err != nil {
+		context.JSON(http.StatusNotFound, gin.H{"error": "transaction id does not exist"})
+		context.Error(err)
+		return
+	}
+
+	context.JSON(
+		http.StatusOK,
+		raw,
+	)
 }

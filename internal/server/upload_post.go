@@ -65,16 +65,6 @@ func generateNewSigner() (*goar.ItemSigner, error) {
 	return itemSigner, err
 }
 
-type DataItemPostResponse struct {
-	ID                  string   `json:"id"`
-	Owner               string   `json:"owner"`
-	DataCaches          []string `json:"dataCaches"`
-	DeadlineHeight      uint     `json:"deadlineHeight"`
-	FastFinalityIndexes []string `json:"fastFinalityIndexes"`
-	Price               uint64   `json:"price"`
-	Version             string   `json:"version"`
-}
-
 // POST /upload
 // Basic Steps
 // 1. Check Gateway is available
@@ -82,8 +72,9 @@ type DataItemPostResponse struct {
 // 3. readDataFromMultipartFile - Read multipart/form-data file and get bytes
 // 4. Generate a new signer to sign the file
 // 5. Create a data-item
-// 6. Create an order
-// 7.
+// 6. Assign a bundler
+// 7. Create an order
+// 8. 
 
 func (s *Server) UploadPost(context *gin.Context) {
 	info, err := s.wallet.Client.GetInfo()
@@ -120,15 +111,22 @@ func (s *Server) UploadPost(context *gin.Context) {
 		Payment: schema.Paid,
 	}
 
+	err = s.store.Set(dataItem.Id, dataItem.ItemBinary)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": ""})
+		context.Error(err)
+		return
+	}
 	err = s.database.CreateOrder(o)
 	if err != nil {
-		context.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create order"})
+		context.Error(err)
 		return
 	}
 
 	context.JSON(
 		http.StatusCreated,
-		&TransactionPostResponse{
+		&DataItemPostResponse{
 			ID:                  o.ID,
 			Owner:               s.wallet.Signer.Address,
 			Price:               o.Price,
