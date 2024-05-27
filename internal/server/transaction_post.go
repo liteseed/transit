@@ -105,7 +105,7 @@ func (s *Server) checkPrice(transactionID string, contentLength string) (uint64,
 	return payment, nil
 }
 
-// POST /data-item
+// POST /tx
 func (s *Server) DataItemPost(context *gin.Context) {
 	header, err := parseHeaders(context)
 	if err != nil {
