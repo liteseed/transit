@@ -14,7 +14,7 @@ func TestNewServer(t *testing.T) {
 	assert.NotNil(t, server)
 }
 
-func TestStatusHandeler(t *testing.T) {
+func TestStatusHandler(t *testing.T) {
 	server, _ := New(":8080", "v1", "http://localhost:1984")
 
 	w := httptest.NewRecorder()
@@ -46,4 +46,27 @@ func TestPriceGetHandler_Error(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), `{"error":"invalid byte size"}`)
+}
+
+func TestDataPostHandler(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/upload", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `{"success":true}`)
+}
+
+func TestDataPostHandler_Error(t *testing.T) {
+	//Error in DataPost handler because of invalid data
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/upload", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), `{"error":"invalid data"}`)
 }
