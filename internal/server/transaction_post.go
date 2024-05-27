@@ -99,10 +99,6 @@ func (s *Server) checkPrice(transactionID string, contentLength string) (uint64,
 	t.SetString(string(tx.Quantity), 10)
 	payment := t.Uint64()
 
-	if err != nil {
-		return 0, err
-	}
-
 	if payment < price {
 		return 0, errors.New("not enough ar to upload, contact support: hello@liteseed.xyz")
 	}
