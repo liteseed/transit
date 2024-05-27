@@ -21,7 +21,6 @@ type Server struct {
 	database *database.Database
 	gateway  string
 	server   *http.Server
-	store    *store.Store
 	wallet   *goar.Wallet
 }
 
@@ -59,11 +58,6 @@ func WithDatabase(db *database.Database) func(*Server) {
 	}
 }
 
-func WithStore(s *store.Store) func(*Server) {
-	return func(c *Server) {
-		c.store = s
-	}
-}
 func WithWallet(w *goar.Wallet) func(*Server) {
 	return func(c *Server) {
 		c.wallet = w
