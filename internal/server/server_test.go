@@ -60,7 +60,7 @@ func TestDataPostHandler(t *testing.T) {
 }
 
 func TestDataPostHandler_Error(t *testing.T) {
-	//Error in DataPost handler because of invalid data
+	//Error in DataPost handler due to invalid data
 	server, _ := New(":8080", "v1", "http://localhost:1984")
 
 	w := httptest.NewRecorder()
@@ -69,4 +69,27 @@ func TestDataPostHandler_Error(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), `{"error":"invalid data"}`)
+}
+
+func TestTransactionGetHandler(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/tx/12345", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `{"transaction":}`)
+}
+
+func TestTransactionGetHandler_Error(t *testing.T) {
+	//Error in TransactionGet handler due to transaction not existing (maybe.?)
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/tx/nonexistent", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Contains(t, w.Body.String(), `{"error":"transaction id not found"}`)
 }
