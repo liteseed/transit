@@ -1,3 +1,6 @@
 FROM golang:latest
 
-ENTRYPOINT [ "cmd/main.go" ]
+WORKDIR /app
+COPY . .
+
+ENTRYPOINT ["./cmd/main.go"]
