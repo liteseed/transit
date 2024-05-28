@@ -48,6 +48,28 @@ func TestPriceGetHandler_Error(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `{"error":"invalid byte size"}`)
 }
 
+func TestPriceGetHandler_ZeroByteSize(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/price/0", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), `{"error":"byte size must be greater than zero"}`)
+}
+
+func TestPriceGetHandler_NegativeByteSize(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/price/-1024", nil)
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), `{"error":"invalid byte size"}`)
+}
+
 func TestDataPostHandler(t *testing.T) {
 	server, _ := New(":8080", "v1", "http://localhost:1984")
 
@@ -71,6 +93,7 @@ func TestDataPostHandler_Error(t *testing.T) {
 }
 
 func TestDataPostHandler_WithData(t *testing.T) {
+	// Simulate valid data
 	data := []byte("test data")
 	req, err := http.NewRequest("POST", "/upload", bytes.NewReader(data))
 	assert.NoError(t, err)
@@ -82,6 +105,19 @@ func TestDataPostHandler_WithData(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `{"success":true}`)
+}
+
+func TestDataPostHandler_LargeData(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	largeData := make([]byte, MAX_DATA_SIZE+1)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/upload", bytes.NewBuffer(largeData))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+	assert.Contains(t, w.Body.String(), `{"error":"data size exceeds limit"}`)
 }
 
 func TestTransactionGetHandler(t *testing.T) {
@@ -126,4 +162,32 @@ func TestTransactionPostHandler_Error(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), `{"error":"missing data"}`)
+}
+
+func TestTransactionPostHandler_MissingFields(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	requestBody := `{"recipient":"recipientAddress"}`
+	req, err := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte(requestBody)))
+	assert.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	assert.Contains(t, w.Body.String(), `{"error":"missing required fields"}`)
+}
+
+func TestTransactionPostHandler_InvalidJSON(t *testing.T) {
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte(`{invalid json}`)))
+	req.Header.Set("Content-Type", "application/json")
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), `{"error":"invalid JSON"}`)
 }
