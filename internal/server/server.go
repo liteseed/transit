@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/everFinance/goar"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/liteseed/sdk-go/contract"
 	"github.com/liteseed/transit/internal/database"
@@ -19,7 +20,6 @@ const (
 type Server struct {
 	contract *contract.Contract
 	database *database.Database
-	gateway  string
 	server   *http.Server
 	store    *store.Store
 	wallet   *goar.Wallet
@@ -31,14 +31,23 @@ func New(port string, version string, gateway string, options ...func(*Server)) 
 		o(s)
 	}
 	engine := gin.New()
-	engine.Use(gin.Recovery())
 
-	engine.Use(ErrorHandler)
-	engine.GET("/", s.Status)
-	engine.GET("/price/:bytes", s.PriceGet)
-	engine.POST("/upload", s.DataPost)
-	engine.GET("/tx/:id", s.DataItemGet)
-	engine.POST("/tx", s.DataItemPost)
+	config := cors.Config{
+		AllowOrigins:  []string{"*"},
+		AllowMethods:  []string{"POST", "GET", "OPTIONS", "HEAD"},
+		AllowHeaders:  []string{"x-transaction-id", "Content-Type", "Content-Length"},
+		ExposeHeaders: []string{"x-transaction-id"},
+	}
+	engine.Use(cors.New(config))
+
+	engine.Use(gin.Recovery())
+	// engine.Use(ErrorHandler)
+	engine.GET("", s.Status)
+	engine.GET("price/:bytes", s.PriceGet)
+	engine.POST("upload", s.UploadPost)
+	engine.GET("tx/:id", s.DataItemGet)
+	engine.GET("tx/:id/data", s.DataItemDataGet)
+	engine.POST("tx", s.DataItemPost)
 
 	s.server = &http.Server{
 		Addr:    port,

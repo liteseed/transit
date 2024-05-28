@@ -5,6 +5,8 @@ go 1.22.1
 require (
 	github.com/dgraph-io/badger v1.6.2
 	github.com/everFinance/goar v1.6.3
+	github.com/everFinance/gojwk v1.0.0
+	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/liteseed/sdk-go v0.1.4
 	github.com/stretchr/testify v1.9.0
@@ -34,7 +36,6 @@ require (
 	github.com/everFinance/arseeding v1.2.5 // indirect
 	github.com/everFinance/ethrpc v1.0.4 // indirect
 	github.com/everFinance/goether v1.1.9 // indirect
-	github.com/everFinance/gojwk v1.0.0 // indirect
 	github.com/everFinance/ttcrsa v1.1.3 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect

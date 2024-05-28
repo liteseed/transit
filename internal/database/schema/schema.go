@@ -31,8 +31,9 @@ func (s Status) Value() (driver.Value, error) {
 }
 
 type Bundler struct {
-	URL     string `json:"url"`
-	Address string `json:"address"`
+	URL           string `json:"url"`
+	Address       string `json:"address"`
+	TransactionId string `json:"transaction_id"`
 }
 
 type Order struct {
@@ -43,5 +44,4 @@ type Order struct {
 	Price         uint64  `json:"price"`
 	Payment       Payment `gorm:"index:idx_status;default:unpaid" sql:"type:payment" json:"payment"`
 	Confirmations uint    `json:"confirmations"`
-	Bundler       Bundler `json:"bundler"`
 }

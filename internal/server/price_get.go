@@ -9,9 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) PriceOfUpload(b string) (uint64, error) {
+type PriceGetResponse struct {
+	Price   uint64 `json:"price"`
+	Address string `json:"address"`
+}
 
-	res, err := http.Get("https://arweave.net/price/" + b)
+func (s *Server) PriceOfUpload(b string) (uint64, error) {
+	println("bytes", b)
+	res, err := http.Get("http://localhost:8008/price/" + b)
 	if err != nil {
 		return 0, err
 	}
@@ -23,9 +28,7 @@ func (s *Server) PriceOfUpload(b string) (uint64, error) {
 
 	cost := big.NewFloat(0)
 	cost.SetString(string(r))
-
-	gasApprox := big.NewFloat(0).Mul(cost, big.NewFloat(0.01))
-	cost.Add(cost, gasApprox)
+	cost.Add(cost, big.NewFloat(1000))
 
 	approx, _ := cost.Uint64()
 	return approx, nil
@@ -44,5 +47,8 @@ func (s *Server) PriceGet(c *gin.Context) {
 		c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, p)
+	c.JSON(http.StatusOK, &PriceGetResponse{
+		Address: s.wallet.Signer.Address,
+		Price:   p,
+	})
 }

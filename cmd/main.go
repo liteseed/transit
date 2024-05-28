@@ -47,7 +47,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	wallet, err := goar.NewWalletFromPath(config.Signer, config.Gateway)
+	wallet, err := goar.NewWalletFromPath(config.Signer, "http://localhost:8008")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -58,7 +58,7 @@ func main() {
 
 	store := store.New(config.Store)
 
-	s, err := server.New(":8000", Version, config.Gateway, server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet), server.WithStore(store))
+	s, err := server.New(":8000", Version, "http://localhost:8008", server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet), server.WithStore(store))
 	if err != nil {
 		log.Fatal(err)
 	}

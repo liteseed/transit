@@ -132,7 +132,5 @@ func (s *Server) UploadPost(context *gin.Context) {
 			Price:               o.Price,
 			Version:             "1.0.0",
 			DeadlineHeight:      uint(info.Height + 200),
-			DataCaches:          []string{s.gateway},
-			FastFinalityIndexes: []string{s.gateway},
 		})
 }

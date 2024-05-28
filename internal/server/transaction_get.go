@@ -9,6 +9,7 @@ import (
 // Get /tx
 func (s *Server) DataItemGet(context *gin.Context) {
 	id := context.Param("id")
+	println(id)
 
 	raw, err := s.store.Get(id)
 	if err != nil {

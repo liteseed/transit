@@ -28,7 +28,7 @@ func New(url string) (*Database, error) {
 }
 
 func (c *Database) Migrate() error {
-	err := c.DB.AutoMigrate(&schema.Order{})
+	err := c.DB.AutoMigrate(&schema.Order{}, &schema.Bundler{})
 	return err
 }
 
@@ -60,6 +60,12 @@ func (c *Database) Shutdown() error {
 		return err
 	}
 	return db.Close()
+}
+
+
+
+func (c *Database) AssignBundler(b *schema.Bundler) error {
+	return c.DB.Create(&b).Error
 }
 
 type Scope = func(*gorm.DB) *gorm.DB
