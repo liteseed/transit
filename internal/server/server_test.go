@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -67,6 +68,20 @@ func TestDataPostHandler_Error(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), `{"error":"invalid data"}`)
+}
+
+func TestDataPostHandler_WithData(t *testing.T) {
+	data := []byte("test data")
+	req, err := http.NewRequest("POST", "/upload", bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	server, _ := New(":8080", "v1", "http://localhost:1984")
+	w := httptest.NewRecorder()
+
+	server.server.Handler.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `{"success":true}`)
 }
 
 func TestTransactionGetHandler(t *testing.T) {
