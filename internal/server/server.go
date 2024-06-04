@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/liteseed/sdk-go/contract"
 	"github.com/liteseed/transit/internal/database"
-	"github.com/liteseed/transit/internal/store"
 )
 
 const (
@@ -20,13 +19,15 @@ const (
 type Server struct {
 	contract *contract.Contract
 	database *database.Database
+	gateway  string
 	server   *http.Server
-	store    *store.Store
 	wallet   *goar.Wallet
 }
 
 func New(port string, version string, gateway string, options ...func(*Server)) (*Server, error) {
-	s := &Server{}
+	s := &Server{
+		gateway: gateway,
+	}
 	for _, o := range options {
 		o(s)
 	}
@@ -44,10 +45,10 @@ func New(port string, version string, gateway string, options ...func(*Server)) 
 	// engine.Use(ErrorHandler)
 	engine.GET("", s.Status)
 	engine.GET("price/:bytes", s.PriceGet)
-	engine.POST("upload", s.UploadPost)
 	engine.GET("tx/:id", s.DataItemGet)
-	engine.GET("tx/:id/data", s.DataItemDataGet)
+	engine.GET("tx/:id/status", s.DataItemStatusGet)
 	engine.POST("tx", s.DataItemPost)
+	engine.PUT("tx/:id/:transaction_id", s.DataItemPut)
 
 	s.server = &http.Server{
 		Addr:    port,
@@ -68,11 +69,6 @@ func WithDatabase(db *database.Database) func(*Server) {
 	}
 }
 
-func WithStore(s *store.Store) func(*Server) {
-	return func(c *Server) {
-		c.store = s
-	}
-}
 func WithWallet(w *goar.Wallet) func(*Server) {
 	return func(c *Server) {
 		c.wallet = w

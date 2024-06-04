@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,9 +12,10 @@ import (
 
 	"github.com/everFinance/goar"
 	"github.com/liteseed/sdk-go/contract"
+	"github.com/liteseed/transit/internal/cron"
 	"github.com/liteseed/transit/internal/database"
 	"github.com/liteseed/transit/internal/server"
-	"github.com/liteseed/transit/internal/store"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var Version string
@@ -21,10 +23,10 @@ var Version string
 type StartConfig struct {
 	Database string
 	Gateway  string
+	Log      string
 	Port     string
 	Process  string
 	Signer   string
-	Store    string
 }
 
 func main() {
@@ -42,12 +44,26 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	logger := slog.New(
+		slog.NewJSONHandler(
+			&lumberjack.Logger{
+				Filename:   config.Log,
+				MaxSize:    2,
+				MaxBackups: 3,
+				MaxAge:     28,
+				Compress:   true,
+			},
+			&slog.HandlerOptions{AddSource: true},
+		),
+	)
+
 	db, err := database.New(config.Database)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	wallet, err := goar.NewWalletFromPath(config.Signer, "http://localhost:8008")
+	wallet, err := goar.NewWalletFromPath(config.Signer, config.Gateway)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -56,9 +72,15 @@ func main() {
 
 	contracts := contract.New(process, wallet.Signer)
 
-	store := store.New(config.Store)
-
-	s, err := server.New(":8000", Version, "http://localhost:8008", server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet), server.WithStore(store))
+	c, err := cron.New(cron.WthContracts(contracts), cron.WithDatabase(db), cron.WithWallet(wallet), cron.WithLogger(logger))
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = c.Setup("* * * * *")
+	if err != nil {
+		log.Fatal(err)
+	}
+	s, err := server.New(":8000", Version, config.Gateway, server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,10 +94,6 @@ func main() {
 	<-quit
 
 	log.Println("Shutdown")
-
-	if err = store.Shutdown(); err != nil {
-		log.Fatal("failed to shutdown", err)
-	}
 
 	time.Sleep(2 * time.Second)
 	if err = s.Shutdown(); err != nil {

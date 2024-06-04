@@ -1,24 +1,19 @@
 package schema
 
-import (
-	"database/sql/driver"
-
-	"gorm.io/gorm"
-)
+import "database/sql/driver"
 
 type Status string
 
-type Payment string
-
 const (
-	Queued = "queued"
-	Error  = "error"
-	Posted = "posted"
-
-	Release = "release"
-
-	Permanent = "permanent"
-	Paid      = "paid"
+	Created   = "created"   // Order Created
+	Queued    = "queued"    // Order Transaction ID added
+	Confirmed = "confirmed" // Order Transaction has > 10 confirmation
+	Paid      = "paid"      // Ready to Send
+	Invalid   = "invalid"   // Not enough AR
+	Posted    = "posted"    // Sent to Arweave
+	Release   = "release"   // Request Liteseed Reward
+	Permanent = "permanent" //
+	Error     = "error"
 )
 
 func (s *Status) Scan(value any) error {
@@ -30,18 +25,11 @@ func (s Status) Value() (driver.Value, error) {
 	return string(s), nil
 }
 
-type Bundler struct {
+type Order struct {
+	ID            string `json:"id"`
+	TransactionID string `json:"transaction_id"`
 	URL           string `json:"url"`
 	Address       string `json:"address"`
-	TransactionId string `json:"transaction_id"`
-}
-
-type Order struct {
-	gorm.Model
-	ID            string  `gorm:"primary_key;" json:"id"`
-	Status        Status  `gorm:"index:idx_status;default:queued" sql:"type:status" json:"status"`
-	TransactionId string  `json:"transaction_id"`
-	Price         uint64  `json:"price"`
-	Payment       Payment `gorm:"index:idx_status;default:unpaid" sql:"type:payment" json:"payment"`
-	Confirmations uint    `json:"confirmations"`
+	Status        Status `gorm:"index:idx_status;default:created" sql:"type:status" json:"status"`
+	Size          uint   `json:"size"`
 }

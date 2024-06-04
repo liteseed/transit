@@ -15,8 +15,7 @@ type PriceGetResponse struct {
 }
 
 func (s *Server) PriceOfUpload(b string) (uint64, error) {
-	println("bytes", b)
-	res, err := http.Get("http://localhost:8008/price/" + b)
+	res, err := http.Get(s.gateway + "/price/" + b)
 	if err != nil {
 		return 0, err
 	}
@@ -25,13 +24,19 @@ func (s *Server) PriceOfUpload(b string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if res.StatusCode >= 400 {
+		return 0, errors.New(string(r))
+	}
 
-	cost := big.NewFloat(0)
-	cost.SetString(string(r))
-	cost.Add(cost, big.NewFloat(1000))
+	cost := big.NewInt(0)
+	cost.SetString(string(r), 10)
 
-	approx, _ := cost.Uint64()
-	return approx, nil
+	fee := big.NewInt(1000) // ~0.001
+	fee.Quo(cost, fee)
+
+	cost.Add(cost, fee)
+
+	return cost.Uint64(), nil
 }
 
 func (s *Server) PriceGet(c *gin.Context) {

@@ -28,7 +28,7 @@ func New(url string) (*Database, error) {
 }
 
 func (c *Database) Migrate() error {
-	err := c.DB.AutoMigrate(&schema.Order{}, &schema.Bundler{})
+	err := c.DB.AutoMigrate(&schema.Order{})
 	return err
 }
 
@@ -42,8 +42,14 @@ func (c *Database) GetOrders(o *schema.Order, scopes ...Scope) (*[]schema.Order,
 	return orders, err
 }
 
+func (c *Database) GetOrder(o *schema.Order, scopes ...Scope) (*schema.Order, error) {
+	order := &schema.Order{}
+	err := c.DB.Scopes(scopes...).Where(o).First(&order).Error
+	return order, err
+}
+
 func (c *Database) UpdateOrder(o *schema.Order) error {
-	return c.DB.Updates(o).Error
+	return c.DB.Model(schema.Order{ID: o.ID}).Updates(o).Error
 }
 
 func (c *Database) UpdateOrders(orders *[]schema.Order, scopes ...Scope) error {
@@ -62,20 +68,4 @@ func (c *Database) Shutdown() error {
 	return db.Close()
 }
 
-
-
-func (c *Database) AssignBundler(b *schema.Bundler) error {
-	return c.DB.Create(&b).Error
-}
-
 type Scope = func(*gorm.DB) *gorm.DB
-
-// Scope for filtering records where confirmations is greater than 25
-func ConfirmationsGreaterThanEqualTo25(db *gorm.DB) *gorm.DB {
-	return db.Where("confirmations >= ?", 25)
-}
-
-// Scope for filtering records where confirmations is greater than 25
-func ConfirmationsLessThan25(db *gorm.DB) *gorm.DB {
-	return db.Where("confirmations < ?", 25)
-}
