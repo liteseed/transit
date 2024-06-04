@@ -52,10 +52,6 @@ func (c *Database) UpdateOrder(o *schema.Order) error {
 	return c.DB.Model(schema.Order{ID: o.ID}).Updates(o).Error
 }
 
-func (c *Database) UpdateOrders(orders *[]schema.Order, scopes ...Scope) error {
-	return c.DB.Updates(orders).Error
-}
-
 func (c *Database) DeleteOrder(id string) error {
 	return c.DB.Delete(&schema.Order{ID: id}).Error
 }
