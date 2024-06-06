@@ -1,10 +1,12 @@
 package cron
 
-import "github.com/liteseed/transit/internal/database/schema"
+import (
+	"github.com/liteseed/transit/internal/database/schema"
+)
 
 // Number of Confirmation > 10
 func (c *Cron) CheckTransactionConfirmation() {
-	orders, err := c.database.GetOrders(&schema.Order{Status: schema.Queued})
+	orders, err := c.database.GetOrders(&schema.Order{Status: schema.Queued, Payment: schema.Unpaid})
 	if err != nil {
 		c.logger.Error("fail: database - get orders", "error", err)
 		return
@@ -13,12 +15,15 @@ func (c *Cron) CheckTransactionConfirmation() {
 		status, err := c.wallet.Client.GetTransactionStatus(order.TransactionID)
 		if err != nil {
 			c.logger.Error("fail: gateway - get transaction status", "err", err)
+			continue
 		}
+
 		if status.NumberOfConfirmations >= 10 {
-			err = c.database.UpdateOrder(&schema.Order{ID: order.ID, Status: schema.Confirmed})
+			err = c.database.UpdateOrder(&schema.Order{ID: order.ID, Payment: schema.Confirmed})
 			if err != nil {
 				c.logger.Error("fail: database - update order", "err", err)
 			}
+			continue
 		}
 	}
 

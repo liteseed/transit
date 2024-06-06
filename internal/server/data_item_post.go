@@ -135,7 +135,9 @@ func (s *Server) DataItemPost(context *gin.Context) {
 		ID:      dataItem.Id,
 		Address: staker.ID,
 		URL:     staker.URL,
+		Payment: schema.Unpaid,
 		Status:  schema.Created,
+		Size:    uint(len(dataItem.ItemBinary)),
 	}
 
 	err = s.database.CreateOrder(o)

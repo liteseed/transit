@@ -72,7 +72,7 @@ func main() {
 
 	contracts := contract.New(process, wallet.Signer)
 
-	c, err := cron.New(cron.WthContracts(contracts), cron.WithDatabase(db), cron.WithWallet(wallet), cron.WithLogger(logger))
+	c, err := cron.New(config.Gateway, cron.WthContracts(contracts), cron.WithDatabase(db), cron.WithWallet(wallet), cron.WithLogger(logger))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,10 +80,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	s, err := server.New(":8000", Version, config.Gateway, server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet))
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	go c.Start()
 	go func() {
 		err := s.Start()
 		if err != http.ErrServerClosed {
@@ -94,9 +97,9 @@ func main() {
 	<-quit
 
 	log.Println("Shutdown")
-
-	time.Sleep(2 * time.Second)
+	c.Shutdown()
 	if err = s.Shutdown(); err != nil {
 		log.Fatal("failed to shutdown", err)
 	}
+	time.Sleep(2 * time.Second)
 }

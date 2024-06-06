@@ -13,14 +13,16 @@ type Cron struct {
 	c        *cron.Cron
 	contract *contract.Contract
 	database *database.Database
+	gateway  string
 	logger   *slog.Logger
 	wallet   *goar.Wallet
 }
 
 type Option = func(*Cron)
 
-func New(options ...func(*Cron)) (*Cron, error) {
+func New(gateway string, options ...func(*Cron)) (*Cron, error) {
 	c := &Cron{c: cron.New()}
+	c.gateway = gateway
 	for _, o := range options {
 		o(c)
 	}
