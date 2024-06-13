@@ -2,58 +2,36 @@ package server
 
 import (
 	"errors"
-	"io"
-	"math/big"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/liteseed/transit/internal/utils"
 )
 
 type PriceGetResponse struct {
-	Price   uint64 `json:"price"`
+	Price   string `json:"price"`
 	Address string `json:"address"`
 }
 
-func (s *Server) PriceOfUpload(b string) (uint64, error) {
-	res, err := http.Get(s.gateway + "/price/" + b)
-	if err != nil {
-		return 0, err
-	}
-
-	r, err := io.ReadAll(res.Body)
-	if err != nil {
-		return 0, err
-	}
-	if res.StatusCode >= 400 {
-		return 0, errors.New(string(r))
-	}
-
-	cost := big.NewInt(0)
-	cost.SetString(string(r), 10)
-
-	fee := big.NewInt(1000) // ~0.001
-	fee.Quo(cost, fee)
-
-	cost.Add(cost, fee)
-
-	return cost.Uint64(), nil
-}
-
-func (s *Server) PriceGet(c *gin.Context) {
+func (srv *Server) PriceGet(c *gin.Context) {
 	b, valid := c.Params.Get("bytes")
 	if !valid {
-		c.AbortWithError(http.StatusBadRequest, errors.New("bytes size is required"))
+		c.JSON(http.StatusBadRequest, errors.New("bytes size is required"))
 		return
 	}
 
-	p, err := s.PriceOfUpload(string(b))
+	size, err := strconv.Atoi(b)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, "failed to fetch price")
-		c.Error(err)
+		c.JSON(http.StatusBadRequest, "size should be between 0 and 2^32-1")
 		return
 	}
-	c.JSON(http.StatusOK, &PriceGetResponse{
-		Address: s.wallet.Signer.Address,
-		Price:   p,
-	})
+
+	p, err := srv.wallet.Client.GetTransactionPrice(size, srv.wallet.Signer.Address)
+	if err != nil {
+		c.JSON(http.StatusFailedDependency, "failed to fetch price")
+		return
+	}
+
+	c.JSON(http.StatusOK, &PriceGetResponse{Address: srv.wallet.Signer.Address, Price: utils.CalculatePriceWithFee(p)})
 }

@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/everFinance/goar"
+	"github.com/liteseed/goar/wallet"
 	"github.com/liteseed/sdk-go/contract"
 	"github.com/liteseed/transit/internal/cron"
 	"github.com/liteseed/transit/internal/database"
@@ -45,7 +45,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	logger := slog.New(
+	l := slog.New(
 		slog.NewJSONHandler(
 			&lumberjack.Logger{
 				Filename:   config.Log,
@@ -63,30 +63,30 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	wallet, err := goar.NewWalletFromPath(config.Signer, config.Gateway)
+	w, err := wallet.FromPath(config.Signer, config.Gateway)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	process := config.Process
+	p := config.Process
 
-	contracts := contract.New(process, wallet.Signer)
+	c := contract.New(p, w.Signer)
 
-	c, err := cron.New(config.Gateway, cron.WthContracts(contracts), cron.WithDatabase(db), cron.WithWallet(wallet), cron.WithLogger(logger))
+	crn, err := cron.New(cron.WithContracts(c), cron.WithDatabase(db), cron.WithWallet(w), cron.WithLogger(l))
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = c.Setup("* * * * *")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	s, err := server.New(":8000", Version, config.Gateway, server.WithContracts(contracts), server.WithDatabase(db), server.WithWallet(wallet))
+	err = crn.Setup("* * * * *")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	go c.Start()
+	s, err := server.New(":8000", Version, server.WithContracts(c), server.WithDatabase(db), server.WithWallet(w))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go crn.Start()
 	go func() {
 		err := s.Start()
 		if err != http.ErrServerClosed {
@@ -97,7 +97,7 @@ func main() {
 	<-quit
 
 	log.Println("Shutdown")
-	c.Shutdown()
+	crn.Shutdown()
 	if err = s.Shutdown(); err != nil {
 		log.Fatal("failed to shutdown", err)
 	}

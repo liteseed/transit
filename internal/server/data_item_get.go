@@ -1,8 +1,6 @@
 package server
 
 import (
-	"io"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,25 +8,18 @@ import (
 )
 
 // Get /tx
-func (s *Server) DataItemGet(context *gin.Context) {
+func (srv *Server) DataItemGet(context *gin.Context) {
 	id := context.Param("id")
 
-	b, err := s.database.GetOrder(&schema.Order{ID: id})
+	o, err := srv.database.GetOrder(&schema.Order{ID: id})
 	if err != nil {
-		log.Println(err)
 		context.JSON(http.StatusNotFound, gin.H{"error": "data-item does not exist"})
 		return
 	}
 
-	resp, err := http.Get("http://" + b.URL + "/tx/" + id)
+	raw, err := srv.bundler.DataItemGet(o.Address, o.ID)
 	if err != nil {
-		context.Status(http.StatusFailedDependency)
-		return
-	}
-	var raw []byte
-	raw, err = io.ReadAll(resp.Body)
-	if err != nil {
-		context.JSON(http.StatusNotFound, gin.H{"error": "unable to read data"})
+		context.JSON(http.StatusFailedDependency, gin.H{"error": err})
 		return
 	}
 

@@ -45,5 +45,5 @@ type Order struct {
 	Address       string  `json:"address"`
 	Status        Status  `gorm:"index:idx_status;default:created" sql:"type:status" json:"status"`
 	Payment       Payment `gorm:"index:idx_payment;default:unpaid" sql:"type:status" json:"payment"`
-	Size          uint    `json:"size"`
+	Size          int    `json:"size"`
 }

@@ -4,10 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/everFinance/goar"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/liteseed/goar/wallet"
 	"github.com/liteseed/sdk-go/contract"
+	"github.com/liteseed/transit/internal/bundler"
 	"github.com/liteseed/transit/internal/database"
 )
 
@@ -17,17 +18,15 @@ const (
 )
 
 type Server struct {
+	bundler  *bundler.Bundler
 	contract *contract.Contract
 	database *database.Database
-	gateway  string
 	server   *http.Server
-	wallet   *goar.Wallet
+	wallet   *wallet.Wallet
 }
 
-func New(port string, version string, gateway string, options ...func(*Server)) (*Server, error) {
-	s := &Server{
-		gateway: gateway,
-	}
+func New(port string, version string, options ...func(*Server)) (*Server, error) {
+	s := &Server{}
 	for _, o := range options {
 		o(s)
 	}
@@ -57,6 +56,12 @@ func New(port string, version string, gateway string, options ...func(*Server)) 
 	return s, nil
 }
 
+func WithBundler(b *bundler.Bundler) func(*Server) {
+	return func(s *Server) {
+		s.bundler = b
+	}
+}
+
 func WithContracts(contract *contract.Contract) func(*Server) {
 	return func(c *Server) {
 		c.contract = contract
@@ -69,7 +74,7 @@ func WithDatabase(db *database.Database) func(*Server) {
 	}
 }
 
-func WithWallet(w *goar.Wallet) func(*Server) {
+func WithWallet(w *wallet.Wallet) func(*Server) {
 	return func(c *Server) {
 		c.wallet = w
 	}

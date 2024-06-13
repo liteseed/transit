@@ -10,13 +10,13 @@ import (
 )
 
 func TestNewServer(t *testing.T) {
-	server, err := New(":8080", "v1", "http://localhost:1984")
+	server, err := New(":8080", "test")
 	assert.NoError(t, err)
 	assert.NotNil(t, server)
 }
 
 func TestStatusHandler(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/", nil)
@@ -27,7 +27,7 @@ func TestStatusHandler(t *testing.T) {
 }
 
 func TestPriceGetHandler(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/price/1024", nil)
@@ -38,7 +38,7 @@ func TestPriceGetHandler(t *testing.T) {
 }
 
 func TestPriceGetHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/price/invalid", nil)
@@ -49,7 +49,7 @@ func TestPriceGetHandler_Error(t *testing.T) {
 }
 
 func TestPriceGetHandler_ZeroByteSize(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/price/0", nil)
@@ -60,7 +60,7 @@ func TestPriceGetHandler_ZeroByteSize(t *testing.T) {
 }
 
 func TestPriceGetHandler_NegativeByteSize(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/price/-1024", nil)
@@ -71,7 +71,7 @@ func TestPriceGetHandler_NegativeByteSize(t *testing.T) {
 }
 
 func TestDataPostHandler(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/upload", nil)
@@ -82,7 +82,7 @@ func TestDataPostHandler(t *testing.T) {
 }
 
 func TestDataPostHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/upload", nil)
@@ -98,7 +98,7 @@ func TestDataPostHandler_WithData(t *testing.T) {
 	req, err := http.NewRequest("POST", "/upload", bytes.NewReader(data))
 	assert.NoError(t, err)
 
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 	w := httptest.NewRecorder()
 
 	server.server.Handler.ServeHTTP(w, req)
@@ -108,7 +108,7 @@ func TestDataPostHandler_WithData(t *testing.T) {
 }
 
 func TestDataPostHandler_LargeData(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	largeData := make([]byte, MAX_DATA_SIZE+1)
 	w := httptest.NewRecorder()
@@ -121,7 +121,7 @@ func TestDataPostHandler_LargeData(t *testing.T) {
 }
 
 func TestTransactionGetHandler(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/tx/12345", nil)
@@ -132,7 +132,7 @@ func TestTransactionGetHandler(t *testing.T) {
 }
 
 func TestTransactionGetHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/tx/nonexistent", nil)
@@ -143,7 +143,7 @@ func TestTransactionGetHandler_Error(t *testing.T) {
 }
 
 func TestTransactionPostHandler(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/tx", nil)
@@ -154,7 +154,7 @@ func TestTransactionPostHandler(t *testing.T) {
 }
 
 func TestTransactionPostHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/tx", nil)
@@ -165,7 +165,7 @@ func TestTransactionPostHandler_Error(t *testing.T) {
 }
 
 func TestTransactionPostHandler_MissingFields(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	requestBody := `{"recipient":"recipientAddress"}`
 	req, err := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte(requestBody)))
@@ -181,7 +181,7 @@ func TestTransactionPostHandler_MissingFields(t *testing.T) {
 }
 
 func TestTransactionPostHandler_InvalidJSON(t *testing.T) {
-	server, _ := New(":8080", "v1", "http://localhost:1984")
+	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte(`{invalid json}`)))

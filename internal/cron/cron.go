@@ -3,33 +3,39 @@ package cron
 import (
 	"log/slog"
 
-	"github.com/everFinance/goar"
+	"github.com/liteseed/goar/wallet"
 	"github.com/liteseed/sdk-go/contract"
+	"github.com/liteseed/transit/internal/bundler"
 	"github.com/liteseed/transit/internal/database"
 	"github.com/robfig/cron/v3"
 )
 
 type Cron struct {
+	bundler  *bundler.Bundler
 	c        *cron.Cron
 	contract *contract.Contract
 	database *database.Database
-	gateway  string
 	logger   *slog.Logger
-	wallet   *goar.Wallet
+	wallet   *wallet.Wallet
 }
 
 type Option = func(*Cron)
 
-func New(gateway string, options ...func(*Cron)) (*Cron, error) {
+func New(options ...func(*Cron)) (*Cron, error) {
 	c := &Cron{c: cron.New()}
-	c.gateway = gateway
 	for _, o := range options {
 		o(c)
 	}
 	return c, nil
 }
 
-func WthContracts(contract *contract.Contract) Option {
+func WithBundler(b *bundler.Bundler) Option {
+	return func(c *Cron) {
+		c.bundler = b
+	}
+}
+
+func WithContracts(contract *contract.Contract) Option {
 	return func(c *Cron) {
 		c.contract = contract
 	}
@@ -47,7 +53,7 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-func WithWallet(s *goar.Wallet) Option {
+func WithWallet(s *wallet.Wallet) Option {
 	return func(c *Cron) {
 		c.wallet = s
 	}
@@ -62,15 +68,15 @@ func (c *Cron) Shutdown() {
 }
 
 func (c *Cron) Setup(spec string) error {
-	_, err := c.c.AddFunc(spec, c.CheckTransactionAmount)
+	_, err := c.c.AddFunc(spec, c.CheckPaymentAmount)
 	if err != nil {
 		return err
 	}
-	_, err = c.c.AddFunc(spec, c.CheckTransactionConfirmation)
+	_, err = c.c.AddFunc(spec, c.CheckPaymentConfirmations)
 	if err != nil {
 		return err
 	}
-	_, err = c.c.AddFunc(spec, c.SendTransaction)
+	_, err = c.c.AddFunc(spec, c.SendPayments)
 	if err != nil {
 		return err
 	}

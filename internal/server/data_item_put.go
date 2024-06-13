@@ -15,15 +15,15 @@ type DataItemPutResponse struct {
 }
 
 // PUT /tx/:id/:transaction_id
-func (s *Server) DataItemPut(context *gin.Context) {
+func (srv *Server) DataItemPut(context *gin.Context) {
 	dataItemID := context.Param("id")
 	transactionID := context.Param("transaction_id")
-	err := s.database.UpdateOrder(&schema.Order{ID: dataItemID, TransactionID: transactionID, Status: schema.Queued})
+	err := srv.database.UpdateOrder(&schema.Order{ID: dataItemID, TransactionID: transactionID, Status: schema.Queued})
 	if err != nil {
 		context.Status(http.StatusInternalServerError)
 		return
 	}
-	info, err := s.wallet.Client.GetInfo()
+	info, err := srv.wallet.Client.GetNetworkInfo()
 	if err != nil {
 		context.Status(http.StatusFailedDependency)
 		log.Println(err)
