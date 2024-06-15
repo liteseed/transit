@@ -19,7 +19,6 @@ func (crn *Cron) sendPayment(o *schema.Order) *schema.Order {
 		crn.logger.Error("fail: gateway - send winston to address", "err", err)
 		return nil
 	}
-
 	_, err = crn.bundler.DataItemPut(o.Address, o.ID, o.TransactionID)
 	if err != nil {
 		crn.logger.Error("fail: bundler - PUT /tx/"+o.ID+"/"+tx.ID, "err", err)
