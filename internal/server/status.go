@@ -12,6 +12,6 @@ import (
 func (s *Server) Status(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"Name":    "Transit",
-		"Version": "v0.1.0",
+		"Version": s.version,
 	})
 }

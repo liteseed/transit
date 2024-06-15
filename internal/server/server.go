@@ -23,10 +23,11 @@ type Server struct {
 	database *database.Database
 	server   *http.Server
 	wallet   *wallet.Wallet
+	version  string
 }
 
 func New(port string, version string, options ...func(*Server)) (*Server, error) {
-	s := &Server{}
+	s := &Server{version: version}
 	for _, o := range options {
 		o(s)
 	}
