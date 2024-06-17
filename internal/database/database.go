@@ -20,10 +20,7 @@ func New(url string) (*Database, error) {
 		return nil, err
 	}
 	c := &Database{DB: db}
-	err = c.Migrate()
-	if err != nil {
-		return nil, err
-	}
+
 	return c, nil
 }
 
