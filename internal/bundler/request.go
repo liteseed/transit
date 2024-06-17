@@ -31,13 +31,12 @@ func (b *Bundler) get(url string) ([]byte, error) {
 	return body, nil
 }
 
-func (b *Bundler) post(url string, contentType string, payload []byte) ([]byte, error) {
+func (b *Bundler) post(url string, payload []byte) ([]byte, error) {
 	u, err := utils.ParseUrl(url)
 	if err != nil {
 		return nil, err
 	}
-
-	res, err := b.client.Post(u, contentType, bytes.NewBuffer(payload))
+	res, err := b.client.Post(u, "application/octet-stream", bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -48,48 +49,53 @@ func parseBody(context *gin.Context, contentLength int) ([]byte, error) {
 }
 
 // POST /tx
-// 1. Parse Headers - content-length, content-type, x-transaction-id
+// 1. Parse Headers - content-length, content-type
 // 2.
-func (srv *Server) DataItemPost(context *gin.Context) {
-	header, err := parseHeaders(context)
+func (srv *Server) DataItemPost(ctx *gin.Context) {
+	header, err := parseHeaders(ctx)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	contentLength, err := strconv.Atoi(*header.ContentLength)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	rawData, err := parseBody(context, contentLength)
+	rawData, err := parseBody(ctx, contentLength)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	dataItem, err := data_item.Decode(rawData)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to decode data item"})
+		log.Println(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to decode data item"})
 		return
 	}
 
 	err = data_item.Verify(dataItem)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to verify data item"})
+		log.Println(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to verify data item"})
 		return
 	}
 
 	staker, err := srv.contract.Initiate(dataItem.ID, contentLength)
 	if err != nil {
-		context.JSON(http.StatusFailedDependency, gin.H{"error": "failed to post to bundler"})
+		log.Println(err)
+		ctx.JSON(http.StatusFailedDependency, gin.H{"error": "failed to initiate"})
 		return
 	}
 
 	res, err := srv.bundler.DataItemPost(staker.URL, dataItem.Raw)
 	if err != nil {
-		context.JSON(http.StatusFailedDependency, gin.H{"error": "failed to post to bundler"})
+		ctx.JSON(http.StatusFailedDependency, gin.H{"error": "failed to post to bundler"})
 		return
 	}
 
@@ -104,9 +110,10 @@ func (srv *Server) DataItemPost(context *gin.Context) {
 
 	err = srv.database.CreateOrder(o)
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "failed to create order"})
+		log.Println(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to create order"})
 		return
 	}
 
-	context.JSON(http.StatusCreated, res)
+	ctx.JSON(http.StatusCreated, res)
 }

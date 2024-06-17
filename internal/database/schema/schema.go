@@ -9,7 +9,7 @@ const (
 	// Order
 	Created = "created" // Order Created
 	Queued  = "queued"  // Order Transaction ID added
-	Sent    = "Sent"    // Order Sent
+	Sent    = "sent"    // Order Sent
 
 	Failed = "failed" // Order Failed
 

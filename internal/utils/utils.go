@@ -3,6 +3,8 @@ package utils
 import (
 	"math/big"
 	"net/url"
+
+	"github.com/gin-gonic/gin"
 )
 
 func CalculatePriceWithFee(p string) string {
@@ -17,14 +19,15 @@ func CalculatePriceWithFee(p string) string {
 }
 
 func ParseUrl(u string) (string, error) {
+	if gin.Mode() == gin.DebugMode {
+		return "http://" + u, nil
+	}
 	p, err := url.Parse(u)
 	if err != nil {
 		return "", err
 	}
-	if p.Hostname() == "localhost" {
-		p.Scheme = "http"
-	} else {
-		p.Scheme = "https"
-	}
+
+	p.Scheme = "https"
+
 	return p.String(), nil
 }

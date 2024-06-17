@@ -37,7 +37,7 @@ func (crn *Cron) SendPayments() {
 	for _, order := range *orders {
 		u := crn.sendPayment(&order)
 		if u != nil {
-			err = crn.database.UpdateOrder(&schema.Order{ID: order.ID, Status: schema.Sent})
+			err = crn.database.UpdateOrder(u)
 			if err != nil {
 				crn.logger.Error("fail: database - update order", "err", err)
 			}

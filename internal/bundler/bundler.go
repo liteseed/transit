@@ -9,6 +9,12 @@ type Bundler struct {
 	client *http.Client
 }
 
+func New() *Bundler {
+	return &Bundler{
+		client: http.DefaultClient,
+	}
+}
+
 func (b *Bundler) DataItemGet(url string, id string) ([]byte, error) {
 	data, err := b.get(url + "/" + "tx" + "/" + id)
 	if err != nil {
@@ -27,7 +33,7 @@ type DataItemPostResponse struct {
 }
 
 func (b *Bundler) DataItemPost(url string, data []byte) (*DataItemPostResponse, error) {
-	data, err := b.post(url+"/"+"tx", "application/octet-stream", data)
+	data, err := b.post(url+"/"+"tx", data)
 	if err != nil {
 		return nil, err
 	}

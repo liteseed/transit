@@ -12,7 +12,6 @@ import (
 
 	"github.com/liteseed/goar/wallet"
 	"github.com/liteseed/sdk-go/contract"
-	"github.com/liteseed/transit/internal/bundler"
 	"github.com/liteseed/transit/internal/cron"
 	"github.com/liteseed/transit/internal/database"
 	"github.com/liteseed/transit/internal/server"
@@ -69,10 +68,9 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	b := bundler.New()
 	c := contract.New(config.Process, w.Signer)
 
-	crn, err := cron.New(cron.WithBundler(b), cron.WithContracts(c), cron.WithDatabase(db), cron.WithWallet(w), cron.WithLogger(l))
+	crn, err := cron.New(cron.WithContracts(c), cron.WithDatabase(db), cron.WithWallet(w), cron.WithLogger(l))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,14 +79,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	srv, err := server.New(config.Port, Version, server.WithBundler(b), server.WithContracts(c), server.WithDatabase(db), server.WithWallet(w))
+	s, err := server.New(config.Port, Version, server.WithContracts(c), server.WithDatabase(db), server.WithWallet(w))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go crn.Start()
 	go func() {
-		err := srv.Start()
+		err := s.Start()
 		if err != http.ErrServerClosed {
 			log.Fatal("failed to start server", err)
 		}
@@ -98,7 +96,7 @@ func main() {
 
 	log.Println("Shutdown")
 	crn.Shutdown()
-	if err = srv.Shutdown(); err != nil {
+	if err = s.Shutdown(); err != nil {
 		log.Fatal("failed to shutdown", err)
 	}
 	time.Sleep(2 * time.Second)

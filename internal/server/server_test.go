@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
+	"github.com/liteseed/goar/tag"
+	"github.com/liteseed/goar/wallet"
+	"github.com/liteseed/sdk-go/contract"
+	"github.com/liteseed/transit/internal/database"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -120,7 +125,7 @@ func TestDataPostHandler_LargeData(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `{"error":"data size exceeds limit"}`)
 }
 
-func TestTransactionGetHandler(t *testing.T) {
+func TestDataItemGetHandler(t *testing.T) {
 	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
@@ -131,7 +136,7 @@ func TestTransactionGetHandler(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `{"transaction":}`)
 }
 
-func TestTransactionGetHandler_Error(t *testing.T) {
+func TestDataItemGetHandler_Error(t *testing.T) {
 	server, _ := New(":8080", "test")
 
 	w := httptest.NewRecorder()
@@ -142,52 +147,34 @@ func TestTransactionGetHandler_Error(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `{"error":"transaction not found"}`)
 }
 
-func TestTransactionPostHandler(t *testing.T) {
-	server, _ := New(":8080", "test")
+func TestDataItemPostHandler(t *testing.T) {
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/tx", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `{"success":true}`)
-}
-
-func TestTransactionPostHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/tx", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"missing data"}`)
-}
-
-func TestTransactionPostHandler_MissingFields(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	requestBody := `{"recipient":"recipientAddress"}`
-	req, err := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte(requestBody)))
+	db, err := database.New("postgresql://localhost:5432/postgres")
 	assert.NoError(t, err)
-	req.Header.Set("Content-Type", "application/json")
 
-	w := httptest.NewRecorder()
-	server.server.Handler.ServeHTTP(w, req)
+	err = db.Migrate()
+	assert.NoError(t, err)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	w, err := wallet.New("http://localhost:1984")
+	assert.NoError(t, err)
 
-	assert.Contains(t, w.Body.String(), `{"error":"missing required fields"}`)
-}
+	c := contract.New("PWSr59Cf6jxY7aA_cfz69rs0IiJWWbmQA8bAKknHeMo", w.Signer)
 
-func TestTransactionPostHandler_InvalidJSON(t *testing.T) {
-	server, _ := New(":8080", "test")
+	srv, err := New(":8000", "test", WithDatabase(db), WithContracts(c), WithWallet(w))
+	assert.NoError(t, err)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte(`{invalid json}`)))
-	req.Header.Set("Content-Type", "application/json")
-	server.server.Handler.ServeHTTP(w, req)
+	rec := httptest.NewRecorder()
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"invalid JSON"}`)
+	t.Run("Success", func(t *testing.T) {
+		d := w.CreateDataItem([]byte{1, 2, 3}, "", "", []tag.Tag{})
+		_, err = w.SignDataItem(d)
+		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
+		req.Header.Set("content-type", "application/octet-stream")
+		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
+
+		srv.server.Handler.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), `{"success":true}`)
+	})
 }

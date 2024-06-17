@@ -32,17 +32,9 @@ func New(port string, version string, options ...func(*Server)) (*Server, error)
 		o(s)
 	}
 	engine := gin.New()
-
-	config := cors.Config{
-		AllowOrigins:  []string{"*"},
-		AllowMethods:  []string{"POST", "GET", "OPTIONS", "HEAD"},
-		AllowHeaders:  []string{"x-transaction-id", "Content-Type", "Content-Length"},
-		ExposeHeaders: []string{"x-transaction-id"},
-	}
-	engine.Use(cors.New(config))
-
+	engine.Use(cors.Default())
 	engine.Use(gin.Recovery())
-	// engine.Use(ErrorHandler)
+	
 	engine.GET("", s.Status)
 	engine.GET("price/:bytes", s.PriceGet)
 	engine.GET("tx/:id", s.DataItemGet)
