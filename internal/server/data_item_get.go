@@ -17,7 +17,7 @@ func (srv *Server) DataItemGet(context *gin.Context) {
 		return
 	}
 
-	raw, err := srv.bundler.DataItemGet(o.Address, o.ID)
+	raw, err := srv.bundler.DataItemGet(o.URL, o.ID)
 	if err != nil {
 		context.JSON(http.StatusFailedDependency, gin.H{"error": err})
 		return
