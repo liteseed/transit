@@ -4,150 +4,140 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/liteseed/goar/tag"
 	"github.com/liteseed/goar/wallet"
 	"github.com/liteseed/sdk-go/contract"
+	"github.com/liteseed/transit/internal/bundler"
 	"github.com/liteseed/transit/internal/database"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/postgres"
 )
 
 func TestNewServer(t *testing.T) {
-	server, err := New(":8080", "test")
+	srv, err := New(":8080", "test")
 	assert.NoError(t, err)
-	assert.NotNil(t, server)
+	assert.NotNil(t, srv)
 }
 
 func TestStatusHandler(t *testing.T) {
-	server, _ := New(":8080", "test")
+	srv, _ := New(":8080", "test")
 
-	w := httptest.NewRecorder()
+	rcd := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/", nil)
-	server.server.Handler.ServeHTTP(w, req)
+	srv.server.Handler.ServeHTTP(rcd, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `{"status":"ok"}`)
+	assert.Equal(t, http.StatusOK, rcd.Code)
+	assert.Equal(t, `{"Name":"Transit","Version":"test"}`, rcd.Body.String())
 }
 
-func TestPriceGetHandler(t *testing.T) {
-	server, _ := New(":8080", "test")
+func TestPriceGet(t *testing.T) {
+	arweave := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, err := w.Write([]byte("1000"))
+			assert.NoError(t, err)
+		}))
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/price/1024", nil)
-	server.server.Handler.ServeHTTP(w, req)
+	defer arweave.Close()
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `{"price":`)
-}
-
-func TestPriceGetHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/price/invalid", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"invalid byte size"}`)
-}
-
-func TestPriceGetHandler_ZeroByteSize(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/price/0", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"byte size must be greater than zero"}`)
-}
-
-func TestPriceGetHandler_NegativeByteSize(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/price/-1024", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"invalid byte size"}`)
-}
-
-func TestDataPostHandler(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/upload", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `{"success":true}`)
-}
-
-func TestDataPostHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/upload", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"invalid data"}`)
-}
-
-func TestDataPostHandler_WithData(t *testing.T) {
-	// Simulate valid data
-	data := []byte("test data")
-	req, err := http.NewRequest("POST", "/upload", bytes.NewReader(data))
+	w, err := wallet.FromPath("../../test/signer.json", arweave.URL)
 	assert.NoError(t, err)
 
-	server, _ := New(":8080", "test")
-	w := httptest.NewRecorder()
+	srv, err := New(":8080", "test", WithWallet(w))
+	assert.NoError(t, err)
 
-	server.server.Handler.ServeHTTP(w, req)
+	t.Run("Success:/price/1000", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/price/1000", nil)
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusOK, rcd.Code)
+		assert.Equal(t, `{"price":"1001","address":"3XTR7MsJUD9LoaiFRdWswzX1X5BR7AQdl1x2v2zIVck"}`, rcd.Body.String())
+	})
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `{"success":true}`)
+	t.Run("Fail:Invalid:/price/invalid", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/price/invalid", nil)
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"size should be between 1 and 2^32-1"}`, rcd.Body.String())
+	})
+	t.Run("Fail:Invalid:/price/0", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/price/0", nil)
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"size should be between 1 and 2^32-1"}`, rcd.Body.String())
+	})
+
+	t.Run("Fail:Invalid:/price/-10", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/price/-10", nil)
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"size should be between 1 and 2^32-1"}`, rcd.Body.String())
+	})
+	t.Run("Fail:Gateway", func(t *testing.T) {
+		w, err := wallet.FromPath("../../test/signer.json", "")
+		assert.NoError(t, err)
+		srv, err := New(":8080", "test", WithWallet(w))
+		assert.NoError(t, err)
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/price/1024", nil)
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusFailedDependency, rcd.Code)
+		assert.Equal(t, `{"error":"failed to fetch price"}`, rcd.Body.String())
+	})
 }
 
-func TestDataPostHandler_LargeData(t *testing.T) {
-	server, _ := New(":8080", "test")
+func TestDataItemGet(t *testing.T) {
+	d, err := os.ReadFile("../../test/dataitem")
+	assert.NoError(t, err)
+	b := httptest.NewServer(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, err = w.Write(d)
+			assert.NoError(t, err)
+		}))
+	defer b.Close()
 
-	largeData := make([]byte, MAX_DATA_SIZE+1)
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/upload", bytes.NewBuffer(largeData))
-	req.Header.Set("Content-Type", "application/octet-stream")
-	server.server.Handler.ServeHTTP(w, req)
+	mockDb, mock, _ := sqlmock.New()
+	db, err := database.FromDialector(postgres.New(postgres.Config{
+		Conn:       mockDb,
+		DriverName: "postgres",
+	}))
+	assert.NoError(t, err)
 
-	assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"data size exceeds limit"}`)
-}
+	srv, _ := New(":8080", "test", WithDatabase(db), WithBundler(bundler.New()))
 
-func TestDataItemGetHandler(t *testing.T) {
-	server, _ := New(":8080", "test")
+	t.Run("Success", func(t *testing.T) {
+		rows := sqlmock.NewRows([]string{"ID", "URL"}).AddRow("1", b.URL[7:])
+		mock.ExpectQuery("SELECT").WillReturnRows(rows)
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/tx/1", nil)
+		srv.server.Handler.ServeHTTP(rcd, req)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/tx/12345", nil)
-	server.server.Handler.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, rcd.Code)
+		assert.Equal(t, rcd.Body.Bytes(), d)
+	})
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Contains(t, w.Body.String(), `{"transaction":}`)
-}
+	t.Run("Fail:NotFound", func(t *testing.T) {
+		mock.ExpectQuery("SELECT")
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/tx/2", nil)
+		srv.server.Handler.ServeHTTP(rcd, req)
 
-func TestDataItemGetHandler_Error(t *testing.T) {
-	server, _ := New(":8080", "test")
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/tx/nonexistent", nil)
-	server.server.Handler.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Contains(t, w.Body.String(), `{"error":"transaction not found"}`)
+		assert.Equal(t, http.StatusNotFound, rcd.Code)
+		assert.Equal(t, rcd.Body.Bytes(), nil)
+	})
 }
 
 func TestDataItemPostHandler(t *testing.T) {
+	b := bundler.New()
 
 	db, err := database.New("postgresql://localhost:5432/postgres")
 	assert.NoError(t, err)
@@ -160,7 +150,7 @@ func TestDataItemPostHandler(t *testing.T) {
 
 	c := contract.New("PWSr59Cf6jxY7aA_cfz69rs0IiJWWbmQA8bAKknHeMo", w.Signer)
 
-	srv, err := New(":8000", "test", WithDatabase(db), WithContracts(c), WithWallet(w))
+	srv, err := New(":8000", "test", WithBundler(b), WithDatabase(db), WithContracts(c), WithWallet(w))
 	assert.NoError(t, err)
 
 	rec := httptest.NewRecorder()

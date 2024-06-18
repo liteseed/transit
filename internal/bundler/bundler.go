@@ -16,11 +16,7 @@ func New() *Bundler {
 }
 
 func (b *Bundler) DataItemGet(url string, id string) ([]byte, error) {
-	data, err := b.get(url + "/" + "tx" + "/" + id)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return b.get(url + "/" + "tx" + "/" + id)
 }
 
 type DataItemPostResponse struct {

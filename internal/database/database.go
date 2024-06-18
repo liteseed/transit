@@ -24,6 +24,22 @@ func New(url string) (*Database, error) {
 	return c, nil
 }
 
+func FromDialector(d gorm.Dialector) (*Database, error) {
+	db, err := gorm.Open(
+		d,
+		&gorm.Config{
+			CreateBatchSize: 200,
+			Logger:          logger.Default.LogMode(logger.Warn),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	c := &Database{DB: db}
+
+	return c, nil
+}
+
 func (c *Database) Migrate() error {
 	err := c.DB.AutoMigrate(&schema.Order{})
 	return err

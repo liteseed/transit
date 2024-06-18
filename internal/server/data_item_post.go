@@ -48,9 +48,6 @@ func parseBody(context *gin.Context, contentLength int) ([]byte, error) {
 	return rawData, nil
 }
 
-// POST /tx
-// 1. Parse Headers - content-length, content-type
-// 2.
 func (srv *Server) DataItemPost(ctx *gin.Context) {
 	header, err := parseHeaders(ctx)
 	if err != nil {

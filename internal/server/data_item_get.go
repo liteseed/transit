@@ -8,22 +8,22 @@ import (
 )
 
 // Get /tx
-func (srv *Server) DataItemGet(context *gin.Context) {
-	id := context.Param("id")
+func (srv *Server) DataItemGet(ctx *gin.Context) {
+	id := ctx.Param("id")
 
 	o, err := srv.database.GetOrder(&schema.Order{ID: id})
 	if err != nil {
-		context.JSON(http.StatusNotFound, gin.H{"error": "data-item does not exist"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "data-item does not exist"})
 		return
 	}
 
 	raw, err := srv.bundler.DataItemGet(o.URL, o.ID)
 	if err != nil {
-		context.JSON(http.StatusFailedDependency, gin.H{"error": err})
+		ctx.JSON(http.StatusFailedDependency, gin.H{"error": err})
 		return
 	}
 
-	context.Data(
+	ctx.Data(
 		http.StatusOK,
 		"application/octet-stream",
 		raw,
