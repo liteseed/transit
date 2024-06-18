@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/liteseed/aogo"
 	"github.com/liteseed/goar/tag"
 	"github.com/liteseed/goar/wallet"
 	"github.com/liteseed/sdk-go/contract"
@@ -136,28 +138,54 @@ func TestDataItemGet(t *testing.T) {
 	})
 }
 
-func TestDataItemPostHandler(t *testing.T) {
-	b := bundler.New()
-
-	db, err := database.New("postgresql://localhost:5432/postgres")
+func TestDataItemPost(t *testing.T) {
+	w, err := wallet.FromPath("../../test/signer.json", "")
 	assert.NoError(t, err)
 
-	err = db.Migrate()
+	d := w.CreateDataItem([]byte{1, 2, 3}, "", "", []tag.Tag{})
+	_, err = w.SignDataItem(d)
 	assert.NoError(t, err)
 
-	w, err := wallet.New("http://localhost:1984")
+	b := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, r *http.Request) {
+		_, err = writer.Write([]byte(fmt.Sprintf(`{"id":"%s","owner":"%s","deadline_height":"%d","fastFinalityIndexes":["localhost"],"dataCaches":["localhost"],"version":"1"}`, d.ID, w.Signer.Address, 199)))
+		assert.NoError(t, err)
+	}))
+	defer b.Close()
+
+	mockDb, mock, _ := sqlmock.New()
+	db, err := database.FromDialector(postgres.New(postgres.Config{
+		Conn:       mockDb,
+		DriverName: "postgres",
+	}))
+
 	assert.NoError(t, err)
 
-	c := contract.New("PWSr59Cf6jxY7aA_cfz69rs0IiJWWbmQA8bAKknHeMo", w.Signer)
+	cu := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err = w.Write([]byte(fmt.Sprintf(`{"Messages":[{"Data":"{\"id\":\"staker\",\"reputation\":0,\"url\":\"%s\"}"}]}`, b.URL[7:])))
+		assert.NoError(t, err)
 
-	srv, err := New(":8000", "test", WithBundler(b), WithDatabase(db), WithContracts(c), WithWallet(w))
+	}))
+	defer cu.Close()
+
+	mu := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`{"id":"id", "message": ""}`))
+		assert.NoError(t, err)
+	}))
+	defer mu.Close()
+
+	ao, err := aogo.New(aogo.WthCU(cu.URL), aogo.WthMU(mu.URL))
+	assert.NoError(t, err)
+
+	c := contract.Custom(ao, "process", w.Signer)
+
+	srv, err := New(":8000", "test", WithBundler(bundler.New()), WithDatabase(db), WithContracts(c), WithWallet(w))
 	assert.NoError(t, err)
 
 	rec := httptest.NewRecorder()
 
 	t.Run("Success", func(t *testing.T) {
-		d := w.CreateDataItem([]byte{1, 2, 3}, "", "", []tag.Tag{})
-		_, err = w.SignDataItem(d)
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT").WithArgs(d.ID, "", b.URL[7:], "staker", "created", "unpaid", 1047).WillReturnResult(nil)
 		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
 		req.Header.Set("content-type", "application/octet-stream")
 		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
@@ -165,6 +193,7 @@ func TestDataItemPostHandler(t *testing.T) {
 		srv.server.Handler.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Contains(t, rec.Body.String(), `{"success":true}`)
+		assert.Contains(t, rec.Body.String(), `{}`)
+
 	})
 }

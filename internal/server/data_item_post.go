@@ -89,9 +89,9 @@ func (srv *Server) DataItemPost(ctx *gin.Context) {
 		ctx.JSON(http.StatusFailedDependency, gin.H{"error": "failed to initiate"})
 		return
 	}
-
 	res, err := srv.bundler.DataItemPost(staker.URL, dataItem.Raw)
 	if err != nil {
+		log.Println(err)
 		ctx.JSON(http.StatusFailedDependency, gin.H{"error": "failed to post to bundler"})
 		return
 	}
