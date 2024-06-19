@@ -41,8 +41,8 @@ func (crn *Cron) checkSinglePaymentAmount(o *schema.Order) *schema.Order {
 	return u
 }
 
-func (crn *Cron) CheckPaymentAmount() {
-	orders, err := crn.database.GetOrders(&schema.Order{Payment: schema.Confirmed})
+func (crn *Cron) CheckPaymentsAmount() {
+	orders, err := crn.database.GetOrders(&schema.Order{Payment: schema.Queued})
 	if err != nil {
 		crn.logger.Error("fail: database - get orders", "error", err)
 		return

@@ -1,158 +1,135 @@
 package cron
 
 import (
-	"log/slog"
 	"net/http"
-	"os"
+	"net/http/httptest"
+	"regexp"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/liteseed/goar/wallet"
-	"github.com/liteseed/sdk-go/contract"
-	"github.com/liteseed/transit/internal/database/schema"
-	"github.com/liteseed/transit/internal/utils"
+	"github.com/liteseed/transit/internal/database"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/postgres"
 )
 
-const TEST_PROCESS = "PWSr59Cf6jxY7aA_cfz69rs0IiJWWbmQA8bAKknHeMo"
+func TestCheckPaymentsAmount(t *testing.T) {
+	mockDb, mock, _ := sqlmock.New()
+	db, err := database.FromDialector(postgres.New(postgres.Config{
+		Conn:       mockDb,
+		DriverName: "postgres",
+	}))
 
-func TestNewCron(t *testing.T) {
-	w, err := wallet.New("http://localhost:1984")
 	assert.NoError(t, err)
-
-	c := contract.New(TEST_PROCESS, w.Signer)
-
-	crn, err := New(WithContracts(c), WithWallet(w))
-	assert.NoError(t, err)
-	assert.NotNil(t, crn)
-}
-
-func mint(address string) {
-	_, err := http.Get("http://localhost:1984/mint/" + address + "/1000000000000")
-	if err != nil {
-		panic(0)
-	}
-	mine()
-}
-
-func mine() {
-	_, err := http.Get("http://localhost:1984/mine")
-	if err != nil {
-		panic(0)
-	}
-}
-
-func TestCheckSinglePaymentAmount(t *testing.T) {
-	data := []byte{1, 2, 3}
-
-	user, err := wallet.New("http://localhost:1984")
-	assert.NoError(t, err)
-	mint(user.Signer.Address)
-	mine()
-
-	bundler, err := wallet.New("http://localhost:1984")
-	assert.NoError(t, err)
-
-	c := contract.New(TEST_PROCESS, bundler.Signer)
-
-	l := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	crn, err := New(WithContracts(c), WithLogger(l), WithWallet(bundler))
-	assert.NoError(t, err)
-
-	p, err := user.Client.GetTransactionPrice(len(data), "")
-	assert.NoError(t, err)
-
 	t.Run("Success", func(t *testing.T) {
-		tx := user.CreateTransaction(data, bundler.Signer.Address, utils.CalculatePriceWithFee(p), nil)
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "payment"=$1 WHERE id = $2`)).WithArgs("paid", "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+		arweave := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/price/1000" {
+					w.WriteHeader(http.StatusOK)
+					_, err := w.Write([]byte("10000"))
+					assert.NoError(t, err)
+				} else {
+					w.WriteHeader(http.StatusOK)
+					_, err := w.Write([]byte(`{"id":"transaction","quantity":"100100","target":"3XTR7MsJUD9LoaiFRdWswzX1X5BR7AQdl1x2v2zIVck"}`))
+					assert.NoError(t, err)
+				}
+			}))
 
-		_, err = user.SignTransaction(tx)
+		defer arweave.Close()
+
+		w, err := wallet.FromPath("../../test/signer.json", arweave.URL)
+		assert.NoError(t, err)
+		crn, err := New(WithDatabase(db), WithWallet(w))
 		assert.NoError(t, err)
 
-		err = user.SendTransaction(tx)
-		assert.NoError(t, err)
-		mine()
+		crn.CheckPaymentsAmount()
+		assert.NoError(t, mock.ExpectationsWereMet())
 
-		u := crn.checkSinglePaymentAmount(&schema.Order{
-			ID:            "TEST",
-			TransactionID: tx.ID,
-			Size:          len(data),
-			Payment:       schema.Confirmed,
-		})
-
-		assert.Equal(t, schema.Payment("paid"), u.Payment)
 	})
 
 	t.Run("Not Enough Fee", func(t *testing.T) {
-		tx := user.CreateTransaction(data, bundler.Signer.Address, p, nil)
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "status"=$1,"payment"=$2 WHERE id = $3`)).WithArgs("failed", "invalid", "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+		arweave := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/price/1000" {
+					w.WriteHeader(http.StatusOK)
+					_, err := w.Write([]byte("10000"))
+					assert.NoError(t, err)
+				} else {
+					w.WriteHeader(http.StatusOK)
+					_, err := w.Write([]byte(`{"id":"transaction","quantity":"10000","target":"3XTR7MsJUD9LoaiFRdWswzX1X5BR7AQdl1x2v2zIVck"}`))
+					assert.NoError(t, err)
+				}
+			}))
 
-		_, err = user.SignTransaction(tx)
+		defer arweave.Close()
+
+		w, err := wallet.FromPath("../../test/signer.json", arweave.URL)
+		assert.NoError(t, err)
+		crn, err := New(WithDatabase(db), WithWallet(w))
 		assert.NoError(t, err)
 
-		err = user.SendTransaction(tx)
-		assert.NoError(t, err)
-		mine()
-
-		u := crn.checkSinglePaymentAmount(&schema.Order{
-			ID:            "TEST",
-			TransactionID: tx.ID,
-			Size:          len(data),
-			Payment:       schema.Confirmed,
-		})
-
-		assert.Equal(t, schema.Payment("invalid"), u.Payment)
-		assert.Equal(t, schema.Status("failed"), u.Status)
+		crn.CheckPaymentsAmount()
+		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
-func TestCheckPaymentConfirmations(t *testing.T) {
-	data := []byte{1, 2, 3}
+func TestCheckPaymentsConfirmations(t *testing.T) {
+	mockDb, mock, _ := sqlmock.New()
+	db, err := database.FromDialector(postgres.New(postgres.Config{
+		Conn:       mockDb,
+		DriverName: "postgres",
+	}))
 
-	user, err := wallet.New("http://localhost:1984")
 	assert.NoError(t, err)
-	mint(user.Signer.Address)
-	mine()
-
-	bundler, err := wallet.New("http://localhost:1984")
-	assert.NoError(t, err)
-
-	c := contract.New(TEST_PROCESS, bundler.Signer)
-
-	l := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	crn, err := New(WithContracts(c), WithLogger(l), WithWallet(bundler))
-	assert.NoError(t, err)
-
-	p, err := user.Client.GetTransactionPrice(len(data), "")
-	assert.NoError(t, err)
-
 	t.Run("Success", func(t *testing.T) {
-		tx := user.CreateTransaction(data, bundler.Signer.Address, utils.CalculatePriceWithFee(p), nil)
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment"}).AddRow("dataitem", "transaction", "confirmed"))
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "payment"=$1 WHERE id = $2`)).WithArgs("paid", "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+		arweave := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{"block_height":1000,"block_indep_hash":"block_indep_hash","number_of_confirmations":11}`))
+				assert.NoError(t, err)
+			}))
 
-		_, err = user.SignTransaction(tx)
+		defer arweave.Close()
+
+		w, err := wallet.FromPath("../../test/signer.json", arweave.URL)
+		assert.NoError(t, err)
+		crn, err := New(WithDatabase(db), WithWallet(w))
 		assert.NoError(t, err)
 
-		err = user.SendTransaction(tx)
-		assert.NoError(t, err)
-		for i := 0; i < 11; i++ {
-			mine()
-		}
-
-		u := crn.checkPaymentConfirmations(tx.ID)
-		assert.Equal(t, schema.Payment("confirmed"), u.Payment)
+		crn.CheckPaymentsConfirmations()
+		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
 	t.Run("Not Enough Confirmation", func(t *testing.T) {
-		tx := user.CreateTransaction(data, bundler.Signer.Address, utils.CalculatePriceWithFee(p), nil)
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment"}).AddRow("dataitem", "transaction", "confirmed"))
+		arweave := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte(`{"block_height":1000,"block_indep_hash":"block_indep_hash","number_of_confirmations":5}`))
+				assert.NoError(t, err)
+			}))
 
-		_, err = user.SignTransaction(tx)
+		defer arweave.Close()
+
+		w, err := wallet.FromPath("../../test/signer.json", arweave.URL)
 		assert.NoError(t, err)
 
-		err = user.SendTransaction(tx)
+		crn, err := New(WithDatabase(db), WithWallet(w))
 		assert.NoError(t, err)
 
-		for i := 0; i < 7; i++ {
-			mine()
-		}
-
-		u := crn.checkPaymentConfirmations(tx.ID)
-		assert.Nil(t, u)
+		crn.CheckPaymentsConfirmations()
+		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }

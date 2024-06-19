@@ -68,11 +68,11 @@ func (c *Cron) Shutdown() {
 }
 
 func (c *Cron) Setup(spec string) error {
-	_, err := c.c.AddFunc(spec, c.CheckPaymentAmount)
+	_, err := c.c.AddFunc(spec, c.CheckPaymentsAmount)
 	if err != nil {
 		return err
 	}
-	_, err = c.c.AddFunc(spec, c.CheckPaymentConfirmations)
+	_, err = c.c.AddFunc(spec, c.CheckPaymentsConfirmations)
 	if err != nil {
 		return err
 	}
