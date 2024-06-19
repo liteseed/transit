@@ -1,6 +1,7 @@
 package cron
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -74,6 +75,24 @@ func TestCheckPaymentsAmount(t *testing.T) {
 		w, err := wallet.FromPath("../../test/signer.json", arweave.URL)
 		assert.NoError(t, err)
 		crn, err := New(WithDatabase(db), WithWallet(w))
+		assert.NoError(t, err)
+
+		crn.CheckPaymentsAmount()
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("Not Found", func(t *testing.T) {
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
+		arweave := httptest.NewServer(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			}))
+
+		defer arweave.Close()
+
+		w, err := wallet.FromPath("../../test/signer.json", arweave.URL)
+		assert.NoError(t, err)
+		crn, err := New(WithDatabase(db), WithLogger(slog.Default()), WithWallet(w))
 		assert.NoError(t, err)
 
 		crn.CheckPaymentsAmount()
