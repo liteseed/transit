@@ -135,7 +135,7 @@ func TestCheckPaymentConfirmations(t *testing.T) {
 			mine()
 		}
 
-		u := crn.checkPaymentConfirmations("TEST", tx.ID)
+		u := crn.checkPaymentConfirmations(tx.ID)
 		assert.Equal(t, schema.Payment("confirmed"), u.Payment)
 	})
 
@@ -152,7 +152,7 @@ func TestCheckPaymentConfirmations(t *testing.T) {
 			mine()
 		}
 
-		u := crn.checkPaymentConfirmations("TEST", tx.ID)
+		u := crn.checkPaymentConfirmations(tx.ID)
 		assert.Nil(t, u)
 	})
 }

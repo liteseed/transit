@@ -31,7 +31,7 @@ func (crn *Cron) checkSinglePaymentAmount(o *schema.Order) *schema.Order {
 		return nil
 	}
 
-	u := &schema.Order{ID: o.ID}
+	u := &schema.Order{}
 	if payment >= price && tx.Target == crn.wallet.Signer.Address {
 		u.Payment = schema.Paid
 	} else {
@@ -49,7 +49,7 @@ func (crn *Cron) CheckPaymentAmount() {
 	}
 	for _, order := range *orders {
 		u := crn.checkSinglePaymentAmount(&order)
-		err = crn.database.UpdateOrder(u)
+		err = crn.database.UpdateOrder(order.ID, u)
 		if err != nil {
 			crn.logger.Error("fail: database - update order", "err", err)
 			return

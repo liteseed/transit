@@ -24,7 +24,7 @@ func (crn *Cron) sendPayment(o *schema.Order) *schema.Order {
 		crn.logger.Error("fail: bundler - PUT /tx/"+o.ID+"/"+tx.ID, "err", err)
 		return nil
 	}
-	return &schema.Order{ID: o.ID, Status: schema.Sent}
+	return &schema.Order{Status: schema.Sent}
 }
 
 func (crn *Cron) SendPayments() {
@@ -37,7 +37,7 @@ func (crn *Cron) SendPayments() {
 	for _, order := range *orders {
 		u := crn.sendPayment(&order)
 		if u != nil {
-			err = crn.database.UpdateOrder(u)
+			err = crn.database.UpdateOrder(order.ID, u)
 			if err != nil {
 				crn.logger.Error("fail: database - update order", "err", err)
 			}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"github.com/liteseed/sdk-go/contract"
 	"github.com/liteseed/transit/internal/bundler"
 	"github.com/liteseed/transit/internal/database"
+	"github.com/liteseed/transit/internal/database/schema"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/postgres"
 )
@@ -118,24 +120,25 @@ func TestDataItemGet(t *testing.T) {
 	srv, _ := New(":8080", "test", WithDatabase(db), WithBundler(bundler.New()))
 
 	t.Run("Success", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"ID", "URL"}).AddRow("1", b.URL[7:])
-		mock.ExpectQuery("SELECT").WillReturnRows(rows)
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "URL"}).AddRow("1", b.URL[7:]))
+
 		rcd := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/tx/1", nil)
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusOK, rcd.Code)
-		assert.Equal(t, rcd.Body.Bytes(), d)
+		assert.Equal(t, d, rcd.Body.Bytes())
 	})
 
 	t.Run("Fail:NotFound", func(t *testing.T) {
-		mock.ExpectQuery("SELECT")
+		mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "orders" WHERE "orders"."id" = $1 ORDER BY "orders"."id" LIMIT $2`)).WithArgs("2", 1).WillReturnError(errors.New("not found"))
+
 		rcd := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/tx/2", nil)
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusNotFound, rcd.Code)
-		assert.Equal(t, rcd.Body.Bytes(), nil)
+		assert.Equal(t, `{"error":"data-item does not exist"}`, rcd.Body.String())
 	})
 }
 
@@ -272,5 +275,32 @@ func TestDataItemPost(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, rcd.Code)
 			assert.Equal(t, `{"error":"failed to decode data item"}`, rcd.Body.String())
 		})
+	})
+}
+
+func TestDataItemPut(t *testing.T) {
+	mockDb, mock, _ := sqlmock.New()
+	db, err := database.FromDialector(postgres.New(postgres.Config{
+		Conn:       mockDb,
+		DriverName: "postgres",
+	}))
+
+	assert.NoError(t, err)
+
+	srv, err := New(":8000", "test", WithDatabase(db))
+	assert.NoError(t, err)
+
+	t.Run("Success", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "transaction_id"=$1,"status"=$2 WHERE id = $3`)).WithArgs("transaction", schema.Queued, "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/tx/%s/%s", "dataitem", "transaction"), nil)
+
+		srv.server.Handler.ServeHTTP(rcd, req)
+
+		assert.Equal(t, http.StatusAccepted, rcd.Code)
+		assert.Equal(t, "{\"id\":\"dataitem\",\"payment_id\":\"transaction\"}", rcd.Body.String())
 	})
 }

@@ -23,9 +23,5 @@ func (srv *Server) DataItemGet(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Data(
-		http.StatusOK,
-		"application/octet-stream",
-		raw,
-	)
+	ctx.Data(http.StatusOK, "application/octet-stream", raw)
 }

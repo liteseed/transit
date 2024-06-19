@@ -40,7 +40,7 @@ func New(port string, version string, options ...func(*Server)) (*Server, error)
 	engine.GET("tx/:id", s.DataItemGet)
 	engine.GET("tx/:id/status", s.DataItemStatusGet)
 	engine.POST("tx", s.DataItemPost)
-	engine.PUT("tx/:id/:transaction_id", s.DataItemPut)
+	engine.PUT("tx/:id/:payment_id", s.DataItemPut)
 
 	s.server = &http.Server{
 		Addr:    port,

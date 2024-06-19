@@ -61,8 +61,8 @@ func (c *Database) GetOrder(o *schema.Order, scopes ...Scope) (*schema.Order, er
 	return order, err
 }
 
-func (c *Database) UpdateOrder(o *schema.Order) error {
-	return c.DB.Model(&schema.Order{}).Where(&schema.Order{ID: o.ID}).Updates(&o).Error
+func (c *Database) UpdateOrder(id string, o *schema.Order) error {
+	return c.DB.Model(&schema.Order{}).Where("id = ?", id).Updates(&o).Error
 }
 
 func (c *Database) DeleteOrder(id string) error {
