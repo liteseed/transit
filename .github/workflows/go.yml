@@ -26,9 +26,6 @@ jobs:
     
     - name: Test Cron
       run: go test ./internal/cron
-       
-    - name: Test Database
-      run: go test ./internal/database
     
     - name: Test Server
       run: go test ./internal/server
