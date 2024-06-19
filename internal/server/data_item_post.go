@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,13 +20,13 @@ type DataItemPostRequestHeader struct {
 func parseHeaders(context *gin.Context) (*DataItemPostRequestHeader, error) {
 	header := &DataItemPostRequestHeader{}
 	if err := context.ShouldBindHeader(header); err != nil {
-		return nil, err
+		return nil, errors.New("required header(s) - content-type, content-length")
 	}
 	if *header.ContentType != CONTENT_TYPE_OCTET_STREAM {
-		return nil, fmt.Errorf("required - content-type: application/octet-stream")
+		return nil, errors.New("required header(s) - content-type: application/octet-stream")
 	}
-	if *header.ContentLength == "" {
-		return nil, fmt.Errorf("required - content-length")
+	if *header.ContentLength == "0" {
+		return nil, errors.New("required header(s) - content-length")
 	}
 	return header, nil
 }
