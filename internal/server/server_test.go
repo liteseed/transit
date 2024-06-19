@@ -201,80 +201,79 @@ func TestDataItemPost(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("{\"id\":\"%s\",\"owner\":\"3XTR7MsJUD9LoaiFRdWswzX1X5BR7AQdl1x2v2zIVck\",\"dataCaches\":[\"localhost\"],\"deadlineHeight\":0,\"fastFinalityIndexes\":[\"localhost\"],\"version\":\"1\"}", d.ID), rcd.Body.String())
 	})
 
-	t.Run("Fail", func(t *testing.T) {
-		t.Run("Missing", func(t *testing.T) {
-			rcd := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
-			srv.server.Handler.ServeHTTP(rcd, req)
-			assert.Equal(t, http.StatusBadRequest, rcd.Code)
-			assert.Equal(t, `{"error":"required header(s) - content-type, content-length"}`, rcd.Body.String())
-		})
-		t.Run("Invalid", func(t *testing.T) {
-			rcd := httptest.NewRecorder()
+	t.Run("Missing", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"required header(s) - content-type, content-length"}`, rcd.Body.String())
+	})
+	t.Run("Invalid", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
 
-			req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
-			req.Header.Set("content-type", "application/json")
-			req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
-			srv.server.Handler.ServeHTTP(rcd, req)
+		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
+		req.Header.Set("content-type", "application/json")
+		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
+		srv.server.Handler.ServeHTTP(rcd, req)
 
-			assert.Equal(t, http.StatusBadRequest, rcd.Code)
-			assert.Equal(t, `{"error":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
-		})
-		t.Run("Invalid Content Type", func(t *testing.T) {
-			rcd := httptest.NewRecorder()
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
+	})
+	t.Run("Invalid Content Type", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
 
-			req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
-			req.Header.Set("content-type", "application/json")
-			req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
-			srv.server.Handler.ServeHTTP(rcd, req)
+		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
+		req.Header.Set("content-type", "application/json")
+		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
+		srv.server.Handler.ServeHTTP(rcd, req)
 
-			assert.Equal(t, http.StatusBadRequest, rcd.Code)
-			assert.Equal(t, `{"error":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
-		})
-		t.Run("Invalid Content Length", func(t *testing.T) {
-			rcd := httptest.NewRecorder()
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
+	})
+	t.Run("Invalid Content Length", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
 
-			req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
-			req.Header.Set("content-type", "application/octet-stream")
-			req.Header.Set("content-length", "-100")
-			srv.server.Handler.ServeHTTP(rcd, req)
+		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
+		req.Header.Set("content-type", "application/octet-stream")
+		req.Header.Set("content-length", "-100")
+		srv.server.Handler.ServeHTTP(rcd, req)
 
-			assert.Equal(t, http.StatusBadRequest, rcd.Code)
-			assert.Equal(t, `{"error":"content-length, body: length mismatch (-100, 1047)"}`, rcd.Body.String())
-		})
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"content-length, body: length mismatch (-100, 1047)"}`, rcd.Body.String())
+	})
 
-		t.Run("Nil Body", func(t *testing.T) {
-			rcd := httptest.NewRecorder()
+	t.Run("Nil Body", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
 
-			req, _ := http.NewRequest("POST", "/tx", nil)
-			req.Header.Set("content-type", "application/octet-stream")
-			req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
-			srv.server.Handler.ServeHTTP(rcd, req)
-			assert.Equal(t, http.StatusBadRequest, rcd.Code)
-			assert.Equal(t, `{"error":"cannot read nil body"}`, rcd.Body.String())
-		})
+		req, _ := http.NewRequest("POST", "/tx", nil)
+		req.Header.Set("content-type", "application/octet-stream")
+		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"cannot read nil body"}`, rcd.Body.String())
+	})
 
-		t.Run("Invalid Body", func(t *testing.T) {
-			rcd := httptest.NewRecorder()
+	t.Run("Invalid Body", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
 
-			req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte{1, 2, 3}))
-			req.Header.Set("content-type", "application/octet-stream")
-			req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
-			srv.server.Handler.ServeHTTP(rcd, req)
-			assert.Equal(t, http.StatusBadRequest, rcd.Code)
-			assert.Equal(t, `{"error":"content-length, body: length mismatch (1047, 3)"}`, rcd.Body.String())
-		})
+		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte{1, 2, 3}))
+		req.Header.Set("content-type", "application/octet-stream")
+		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"content-length, body: length mismatch (1047, 3)"}`, rcd.Body.String())
+	})
 
-		t.Run("Invalid Data Item", func(t *testing.T) {
-			rcd := httptest.NewRecorder()
+	t.Run("Invalid Data Item", func(t *testing.T) {
+		rcd := httptest.NewRecorder()
 
-			req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte{1, 2, 3}))
-			req.Header.Set("content-type", "application/octet-stream")
-			req.Header.Set("content-length", "3")
-			srv.server.Handler.ServeHTTP(rcd, req)
-			assert.Equal(t, http.StatusBadRequest, rcd.Code)
-			assert.Equal(t, `{"error":"failed to decode data item"}`, rcd.Body.String())
-		})
+		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer([]byte{1, 2, 3}))
+		req.Header.Set("content-type", "application/octet-stream")
+		req.Header.Set("content-length", "3")
+		srv.server.Handler.ServeHTTP(rcd, req)
+		assert.Equal(t, http.StatusBadRequest, rcd.Code)
+		assert.Equal(t, `{"error":"failed to decode data item"}`, rcd.Body.String())
+
 	})
 }
 
@@ -296,7 +295,7 @@ func TestDataItemPut(t *testing.T) {
 		mock.ExpectCommit()
 
 		rcd := httptest.NewRecorder()
-		req, _ := http.NewRequest("PUT", fmt.Sprintf("/tx/%s/%s", "dataitem", "transaction"), nil)
+		req, _ := http.NewRequest("PUT", "/tx/dataitem/transaction", nil)
 
 		srv.server.Handler.ServeHTTP(rcd, req)
 

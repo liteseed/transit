@@ -109,7 +109,7 @@ func (srv *Server) DataItemPost(ctx *gin.Context) {
 	err = srv.database.CreateOrder(o)
 	if err != nil {
 		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to create order"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create order"})
 		return
 	}
 
