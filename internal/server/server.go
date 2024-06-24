@@ -26,6 +26,13 @@ type Server struct {
 	version  string
 }
 
+// @title          Liteseed API
+// @version        0.0.1
+// @description    The API is currently live at https://api.liteseed.xyz
+// @contact.name   API Support
+// @contact.url    https://liteseed.xyz/support
+// @contact.email  support@liteseed.xyz
+// @host           https://api.liteseed.xyz
 func New(port string, version string, options ...func(*Server)) (*Server, error) {
 	s := &Server{version: version}
 	for _, o := range options {
@@ -34,7 +41,7 @@ func New(port string, version string, options ...func(*Server)) (*Server, error)
 	engine := gin.New()
 	engine.Use(cors.Default())
 	engine.Use(gin.Recovery())
-	
+
 	engine.GET("", s.Status)
 	engine.GET("price/:bytes", s.PriceGet)
 	engine.GET("tx/:id", s.DataItemGet)

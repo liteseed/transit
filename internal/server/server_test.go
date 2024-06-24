@@ -146,7 +146,7 @@ func TestDataItemPost(t *testing.T) {
 	w, err := wallet.FromPath("../../test/signer.json", "")
 	assert.NoError(t, err)
 
-	d := w.CreateDataItem([]byte{1, 2, 3}, "", "", []tag.Tag{})
+	d := w.CreateDataItem([]byte{1, 2, 3}, "", "", &[]tag.Tag{})
 	_, err = w.SignDataItem(d)
 	assert.NoError(t, err)
 

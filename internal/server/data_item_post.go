@@ -9,8 +9,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/liteseed/goar/transaction/data_item"
+	"github.com/liteseed/transit/internal/bundler"
 	"github.com/liteseed/transit/internal/database/schema"
 )
+
+type DataItemPostResponse = bundler.DataItemPostResponse
 
 type DataItemPostRequestHeader struct {
 	ContentType   *string `header:"content-type" binding:"required"`
@@ -49,6 +52,16 @@ func parseBody(context *gin.Context, contentLength int) ([]byte, error) {
 	return rawData, nil
 }
 
+// Post a data-item to Liteseed godoc
+// @Summary      Post a data-item
+// @Description  Post your data in a specified ANS-104 data-item format.
+// @Tags          Upload
+// @Accept       json
+// @Produce      json
+// @Param        id           path      string  true  "ID of the data-item"
+// @Success      200          {object}  DataItemPostResponse
+// @Failure      400,424,500  {object}  HTTPError
+// @Router       /tx/ [post]
 func (srv *Server) DataItemPost(ctx *gin.Context) {
 	header, err := parseHeaders(ctx)
 	if err != nil {

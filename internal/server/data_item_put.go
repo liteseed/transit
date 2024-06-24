@@ -13,7 +13,17 @@ type DataItemPutResponse struct {
 	PaymentID string `json:"payment_id"`
 }
 
-// PUT /tx/:id/:payment_id
+// Update payment id to data-item godoc
+// @Summary      Send a payment id for a data-item
+// @Description  Once a payment is made send a transaction id for a data-item
+// @Tags         Upload
+// @Accept       json
+// @Produce      json
+// @Param        id               path      string  true  "Data-Item id"
+// @Param        payment_id       path      string  true  "Payment id"
+// @Success      200              {object}  DataItemPutResponse
+// @Failure      400,404,424,500  {object}  HTTPError
+// @Router       /tx/{id}/{payment_id} [put]
 func (srv *Server) DataItemPut(context *gin.Context) {
 	dataItemID := context.Param("id")
 	paymentID := context.Param("payment_id")

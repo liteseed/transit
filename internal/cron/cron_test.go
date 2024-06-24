@@ -1,7 +1,6 @@
 package cron
 
 import (
-	"log"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -217,7 +216,6 @@ func TestSendPayments(t *testing.T) {
 		mock.ExpectCommit()
 		arweave := httptest.NewServer(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				log.Println(r.URL.Path)
 				if r.URL.Path == "/price/0" {
 					w.WriteHeader(http.StatusOK)
 					_, err := w.Write([]byte("1000"))

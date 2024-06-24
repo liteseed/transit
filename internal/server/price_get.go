@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -9,28 +10,39 @@ import (
 )
 
 type PriceGetResponse struct {
-	Price   string `json:"price"`
-	Address string `json:"address"`
+	Price   string `json:"price" example:"1000000000000" format:"string"`
+	Address string `json:"address" example:"Cbj95zDZBBhmyht6iFlEf7xmSCSVZGw436V6HWmm9Ek" format:"string"`
 }
 
-func (srv *Server) PriceGet(c *gin.Context) {
-	b, valid := c.Params.Get("bytes")
+// Price godoc
+// @Summary      Get price of upload
+// @Description  Get the current price of data upload using the Liteseed Network.
+// @Description  It returns the price of upload in wei and the address to pay.
+// @Tags         Payment
+// @Accept       json
+// @Produce      json
+// @Param        bytes             path      int  true  "Size of Data" minimum(1) maximum(2147483647)
+// @Success      200               {object}  PriceGetResponse
+// @Failure      400,424,500   {object}  HTTPError
+// @Router       /price/{bytes} [get]
+func (srv *Server) PriceGet(ctx *gin.Context) {
+	b, valid := ctx.Params.Get("bytes")
 	if !valid {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "byte size is required"})
+		NewError(ctx, http.StatusBadRequest, errors.New("byte size is invalid"))
 		return
 	}
 
 	size, err := strconv.Atoi(b)
 	if err != nil || size <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "size should be between 1 and 2^32-1"})
+		NewError(ctx, http.StatusBadRequest, errors.New("byte size should be between 1 and 2^32-1"))
 		return
 	}
 
 	p, err := srv.wallet.Client.GetTransactionPrice(size, srv.wallet.Signer.Address)
 	if err != nil {
-		c.JSON(http.StatusFailedDependency, gin.H{"error": "failed to fetch price"})
+		NewError(ctx, http.StatusFailedDependency, errors.New("failed to fetch price"))
 		return
 	}
 
-	c.JSON(http.StatusOK, &PriceGetResponse{Address: srv.wallet.Signer.Address, Price: utils.CalculatePriceWithFee(p)})
+	ctx.JSON(http.StatusOK, &PriceGetResponse{Address: srv.wallet.Signer.Address, Price: utils.CalculatePriceWithFee(p)})
 }

@@ -7,21 +7,31 @@ import (
 	"github.com/liteseed/transit/internal/database/schema"
 )
 
-// Get /tx/:id
-func (srv *Server) DataItemStatusGet(context *gin.Context) {
-	id := context.Param("id")
+// Get the status of the posted data-item godoc
+// @Summary      Get the status of a data-item
+// @Description  Get the current status of a posted data-item.
+// @Description  Response "created", "queued", "sent", "confirmed", "failed", "invalid"
+// @Tags         Upload
+// @Accept       json
+// @Produce      json
+// @Param        id            path          string    true  "ID of the data-item"
+// @Success      200           {string}      status
+// @Failure      404,424,500   {object}      HTTPError
+// @Router       /tx/{id}/status [get]
+func (srv *Server) DataItemStatusGet(ctx *gin.Context) {
+	id := ctx.Param("id")
 
 	o, err := srv.database.GetOrder(&schema.Order{ID: id})
 	if err != nil {
-		context.JSON(http.StatusNotFound, gin.H{"error": "data id does not exist"})
+		NewError(ctx, http.StatusNotFound, err)
 		return
 	}
 
-	res, err := srv.bundler.DataItemStatusGet(o.Address)
+	res, err := srv.bundler.DataItemStatusGet(o.URL)
 	if err != nil {
-		context.JSON(http.StatusFailedDependency, gin.H{"error": err})
+		NewError(ctx, http.StatusFailedDependency, err)
 		return
 	}
 
-	context.JSON(http.StatusOK, string(res))
+	ctx.JSON(http.StatusOK, string(res))
 }
