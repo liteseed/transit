@@ -21,7 +21,8 @@ func (crn *Cron) sendPayment(o *schema.Order) *schema.Order {
 	}
 	_, err = crn.bundler.DataItemPut(o.URL, o.ID, o.TransactionID)
 	if err != nil {
-		crn.logger.Error("fail: bundler - PUT /tx/"+o.ID+"/"+tx.ID, "err", err)
+		
+		crn.logger.Error("fail: bundler - PUT " + o.URL + "/tx/"+o.ID+"/"+tx.ID, "err", err)
 		return nil
 	}
 	return &schema.Order{Status: schema.Sent}

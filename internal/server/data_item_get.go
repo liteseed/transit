@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/liteseed/transit/internal/database/schema"
 )
 
 // Get a complete data-item godoc
@@ -19,16 +18,15 @@ import (
 // @Router       /tx/{id} [get]
 func (srv *Server) DataItemGet(ctx *gin.Context) {
 	id := ctx.Param("id")
-
-	o, err := srv.database.GetOrder(&schema.Order{ID: id})
+	o, err := srv.database.GetOrder(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "data-item does not exist"})
+		NewError(ctx, 404, err)
 		return
 	}
 
 	raw, err := srv.bundler.DataItemGet(o.URL, o.ID)
 	if err != nil {
-		ctx.JSON(http.StatusFailedDependency, gin.H{"error": err})
+		NewError(ctx, 424, err)
 		return
 	}
 

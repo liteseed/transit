@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/liteseed/transit/internal/database/schema"
 )
 
 // Get the status of the posted data-item godoc
@@ -21,13 +20,13 @@ import (
 func (srv *Server) DataItemStatusGet(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	o, err := srv.database.GetOrder(&schema.Order{ID: id})
+	o, err := srv.database.GetOrder(id)
 	if err != nil {
 		NewError(ctx, http.StatusNotFound, err)
 		return
 	}
 
-	res, err := srv.bundler.DataItemStatusGet(o.URL)
+	res, err := srv.bundler.DataItemStatusGet(o.URL, id)
 	if err != nil {
 		NewError(ctx, http.StatusFailedDependency, err)
 		return

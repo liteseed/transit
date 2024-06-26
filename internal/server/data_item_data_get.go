@@ -1,11 +1,12 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/liteseed/goar/crypto"
 	"github.com/liteseed/goar/transaction/data_item"
-	"github.com/liteseed/transit/internal/database/schema"
 )
 
 // Get Data-Item Data godoc
@@ -21,7 +22,7 @@ import (
 func (srv *Server) DataItemDataGet(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	o, err := srv.database.GetOrder(&schema.Order{ID: id})
+	o, err := srv.database.GetOrder(id)
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "data id does not exist"})
 		return
@@ -32,12 +33,18 @@ func (srv *Server) DataItemDataGet(ctx *gin.Context) {
 		ctx.JSON(http.StatusFailedDependency, gin.H{"error": err})
 		return
 	}
-
 	d, err := data_item.Decode(res)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		NewError(ctx, http.StatusInternalServerError, err)
+		return
+	}
+	log.Println(d.ID)
+
+	b, err := crypto.Base64Decode(d.Data)
+	if err != nil {
+		NewError(ctx, http.StatusInternalServerError, err)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, d.Data)
+	ctx.Data(http.StatusOK, "application/octet-stream", b)
 }

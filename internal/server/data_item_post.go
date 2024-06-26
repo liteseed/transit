@@ -90,7 +90,7 @@ func (srv *Server) DataItemPost(ctx *gin.Context) {
 		return
 	}
 
-	err = data_item.Verify(dataItem)
+	err = dataItem.Verify()
 	if err != nil {
 		log.Println(err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to verify data item"})

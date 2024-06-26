@@ -12,7 +12,10 @@ type Database struct {
 }
 
 func New(url string) (*Database, error) {
-	db, err := gorm.Open(postgres.Open(url), &gorm.Config{
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  url,
+		PreferSimpleProtocol: true, // disables implicit prepared statement usage
+	}), &gorm.Config{
 		CreateBatchSize: 200,
 		Logger:          logger.Default.LogMode(logger.Silent),
 	})
@@ -55,9 +58,9 @@ func (c *Database) GetOrders(o *schema.Order, scopes ...Scope) (*[]schema.Order,
 	return orders, err
 }
 
-func (c *Database) GetOrder(o *schema.Order, scopes ...Scope) (*schema.Order, error) {
+func (c *Database) GetOrder(id string) (*schema.Order, error) {
 	order := &schema.Order{}
-	err := c.DB.Scopes(scopes...).Where(o).First(&order).Error
+	err := c.DB.First(&order, "id = ?", id).Error
 	return order, err
 }
 
