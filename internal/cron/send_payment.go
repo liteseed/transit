@@ -19,10 +19,10 @@ func (crn *Cron) sendPayment(o *schema.Order) *schema.Order {
 		crn.logger.Error("fail: gateway - send winston to address", "err", err)
 		return nil
 	}
-	_, err = crn.bundler.DataItemPut(o.URL, o.ID, o.TransactionID)
+	_, err = crn.bundler.DataItemPut(o.URL, o.Id, o.TransactionId)
 	if err != nil {
-		
-		crn.logger.Error("fail: bundler - PUT " + o.URL + "/tx/"+o.ID+"/"+tx.ID, "err", err)
+
+		crn.logger.Error("fail: bundler - PUT "+o.URL+"/tx/"+o.Id+"/"+tx.ID, "err", err)
 		return nil
 	}
 	return &schema.Order{Status: schema.Sent}
@@ -38,7 +38,7 @@ func (crn *Cron) SendPayments() {
 	for _, order := range *orders {
 		u := crn.sendPayment(&order)
 		if u != nil {
-			err = crn.database.UpdateOrder(order.ID, u)
+			err = crn.database.UpdateOrder(order.Id, u)
 			if err != nil {
 				crn.logger.Error("fail: database - update order", "err", err)
 			}

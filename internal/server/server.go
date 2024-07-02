@@ -42,13 +42,13 @@ func New(port string, version string, options ...func(*Server)) (*Server, error)
 	engine.Use(cors.Default())
 	engine.Use(gin.Recovery())
 
-	engine.GET("", s.Status)
-	engine.GET("price/:bytes", s.PriceGet)
-	engine.GET("tx/:id", s.DataItemGet)
-	engine.GET("tx/:id/data", s.DataItemDataGet)
-	engine.GET("tx/:id/status", s.DataItemStatusGet)
-	engine.POST("tx", s.DataItemPost)
-	engine.PUT("tx/:id/:payment_id", s.DataItemPut)
+	engine.GET("/", s.Status)
+	engine.GET("/price/:bytes", s.PriceGet)
+	engine.GET("/tx/:id", s.DataItemGet)
+	engine.GET("/tx/:id/data", s.DataItemDataGet)
+	engine.GET("/tx/:id/status", s.DataItemStatusGet)
+	engine.POST("/tx", s.DataItemPost)
+	engine.PUT("/tx/:id/:payment_id", s.DataItemPut)
 
 	s.server = &http.Server{
 		Addr:    port,

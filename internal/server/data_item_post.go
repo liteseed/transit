@@ -55,7 +55,7 @@ func parseBody(context *gin.Context, contentLength int) ([]byte, error) {
 // Post a data-item to Liteseed godoc
 // @Summary      Post a data-item
 // @Description  Post your data in a specified ANS-104 data-item format.
-// @Tags          Upload
+// @Tags         Upload
 // @Accept       json
 // @Produce      json
 // @Param        id           path      string  true  "ID of the data-item"
@@ -65,53 +65,48 @@ func parseBody(context *gin.Context, contentLength int) ([]byte, error) {
 func (srv *Server) DataItemPost(ctx *gin.Context) {
 	header, err := parseHeaders(ctx)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		NewError(ctx, http.StatusBadRequest, err)
 		return
 	}
 
 	contentLength, err := strconv.Atoi(*header.ContentLength)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		NewError(ctx, http.StatusBadRequest, err)
 		return
 	}
 	rawData, err := parseBody(ctx, contentLength)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		NewError(ctx, http.StatusBadRequest, err)
 		return
 	}
 
 	dataItem, err := data_item.Decode(rawData)
 	if err != nil {
 		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to decode data item"})
+		NewError(ctx, http.StatusBadRequest, errors.New("failed to decode data item"))
 		return
 	}
 
 	err = dataItem.Verify()
 	if err != nil {
 		log.Println(err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "failed to verify data item"})
+		NewError(ctx, http.StatusBadRequest, errors.New("failed to verify data item"))
 		return
 	}
 
 	staker, err := srv.contract.Initiate(dataItem.ID, contentLength)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusFailedDependency, gin.H{"error": "failed to initiate"})
+		NewError(ctx, http.StatusFailedDependency, err)
 		return
 	}
 	res, err := srv.bundler.DataItemPost(staker.URL, dataItem.Raw)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusFailedDependency, gin.H{"error": "failed to post to bundler"})
+		NewError(ctx, http.StatusFailedDependency, err)
 		return
 	}
 
 	o := &schema.Order{
-		ID:      dataItem.ID,
+		Id:      dataItem.ID,
 		Address: staker.ID,
 		URL:     staker.URL,
 		Payment: schema.Unpaid,
@@ -121,8 +116,7 @@ func (srv *Server) DataItemPost(ctx *gin.Context) {
 
 	err = srv.database.CreateOrder(o)
 	if err != nil {
-		log.Println(err)
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create order"})
+		NewError(ctx, http.StatusInternalServerError, err)
 		return
 	}
 

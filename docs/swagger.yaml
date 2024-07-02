@@ -22,7 +22,7 @@ definitions:
     properties:
       id:
         type: string
-      payment_id:
+      paymentId:
         type: string
     type: object
   server.HTTPError:
@@ -45,17 +45,6 @@ definitions:
         format: string
         type: string
     type: object
-  server.StatusResponse:
-    properties:
-      name:
-        example: transit
-        format: string
-        type: string
-      version:
-        example: v0.0.1
-        format: string
-        type: string
-    type: object
 host: https://api.liteseed.xyz
 info:
   contact:
@@ -66,21 +55,6 @@ info:
   title: Liteseed API
   version: 0.0.1
 paths:
-  /:
-    get:
-      consumes:
-      - application/json
-      description: Get the current status of the server
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/server.StatusResponse'
-      summary: Get status of the server
-      tags:
-      - Server
   /price/{bytes}:
     get:
       consumes:
@@ -177,10 +151,6 @@ paths:
           description: Failed Dependency
           schema:
             $ref: '#/definitions/server.HTTPError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/server.HTTPError'
       summary: Get a posted data-item
       tags:
       - Upload
@@ -190,14 +160,14 @@ paths:
       - application/json
       description: Once a payment is made send a transaction id for a data-item
       parameters:
-      - description: Data-Item id
+      - description: data-item id
         in: path
         name: id
         required: true
         type: string
-      - description: Payment id
+      - description: payment id
         in: path
-        name: payment_id
+        name: paymentId
         required: true
         type: string
       produces:
@@ -215,14 +185,6 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/server.HTTPError'
-        "424":
-          description: Failed Dependency
-          schema:
-            $ref: '#/definitions/server.HTTPError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/server.HTTPError'
       summary: Send a payment id for a data-item
       tags:
       - Upload
@@ -230,15 +192,21 @@ paths:
     get:
       consumes:
       - application/json
-      description: get only the data of a posted data-item
+      description: |-
+        Get only the data of a posted data-item. It tries to automatically detect mime-type.
+        You can specify the response mime-type by either sending an mime-type query parameter or an accept header in the request.
+        Supported mime-type are listed here - https://github.com/gabriel-vasile/mimetype/blob/master/supported_mimes.md.
+        If all else fails defaults to `application/octet-stream`
       parameters:
-      - description: ID of the Data-Item
+      - description: ID of the data-Item
         in: path
         name: id
         required: true
         type: string
-      produces:
-      - application/octet-stream
+      - description: Mime type of the response
+        in: query
+        name: mime-type
+        type: string
       responses:
         "200":
           description: OK

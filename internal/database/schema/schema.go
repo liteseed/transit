@@ -39,11 +39,11 @@ func (s Payment) Value() (driver.Value, error) {
 }
 
 type Order struct {
-	ID            string  `json:"id"`
-	TransactionID string  `json:"transaction_id"`
+	Id            string  `json:"id"`
+	TransactionId string  `json:"transaction_id"`
 	URL           string  `json:"url"`
 	Address       string  `json:"address"`
 	Status        Status  `gorm:"index:idx_status;default:created" sql:"type:status" json:"status"`
 	Payment       Payment `gorm:"index:idx_payment;default:unpaid" sql:"type:status" json:"payment"`
-	Size          int    `json:"size"`
+	Size          int     `json:"size"`
 }

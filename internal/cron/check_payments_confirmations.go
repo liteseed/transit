@@ -10,13 +10,13 @@ func (crn *Cron) CheckPaymentsConfirmations() {
 		return
 	}
 	for _, order := range *orders {
-		status, err := crn.wallet.Client.GetTransactionStatus(order.TransactionID)
+		status, err := crn.wallet.Client.GetTransactionStatus(order.TransactionId)
 		if err != nil {
 			crn.logger.Error("fail: gateway - get transaction status", "err", err)
 			continue
 		}
 		if status.NumberOfConfirmations >= 10 {
-			err = crn.database.UpdateOrder(order.ID, &schema.Order{Payment: schema.Paid})
+			err = crn.database.UpdateOrder(order.Id, &schema.Order{Payment: schema.Paid})
 			if err != nil {
 				crn.logger.Error("fail: database - update order", "err", err)
 			}

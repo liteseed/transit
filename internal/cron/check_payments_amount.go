@@ -8,7 +8,7 @@ import (
 )
 
 func (crn *Cron) checkSinglePaymentAmount(o *schema.Order) *schema.Order {
-	tx, err := crn.wallet.Client.GetTransactionByID(o.TransactionID)
+	tx, err := crn.wallet.Client.GetTransactionByID(o.TransactionId)
 	if err != nil {
 		crn.logger.Error("fail: gateway - get transaction by id", "err", err)
 		return nil
@@ -49,7 +49,7 @@ func (crn *Cron) CheckPaymentsAmount() {
 	}
 	for _, order := range *orders {
 		u := crn.checkSinglePaymentAmount(&order)
-		err = crn.database.UpdateOrder(order.ID, u)
+		err = crn.database.UpdateOrder(order.Id, u)
 		if err != nil {
 			crn.logger.Error("fail: database - update order", "err", err)
 			return

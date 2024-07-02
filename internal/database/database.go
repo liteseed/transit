@@ -69,7 +69,7 @@ func (c *Database) UpdateOrder(id string, o *schema.Order) error {
 }
 
 func (c *Database) DeleteOrder(id string) error {
-	return c.DB.Delete(&schema.Order{ID: id}).Error
+	return c.DB.Delete(&schema.Order{Id: id}).Error
 }
 
 func (c *Database) Shutdown() error {

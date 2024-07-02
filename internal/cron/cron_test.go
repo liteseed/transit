@@ -26,7 +26,7 @@ func TestCheckPaymentsAmount(t *testing.T) {
 
 	assert.NoError(t, err)
 	t.Run("Success", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "TransactionId", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
 		mock.ExpectBegin()
 		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "payment"=$1 WHERE id = $2`)).WithArgs("paid", "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectCommit()
@@ -56,7 +56,7 @@ func TestCheckPaymentsAmount(t *testing.T) {
 	})
 
 	t.Run("Not Enough Fee", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "TransactionId", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
 		mock.ExpectBegin()
 		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "status"=$1,"payment"=$2 WHERE id = $3`)).WithArgs("failed", "invalid", "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectCommit()
@@ -85,7 +85,7 @@ func TestCheckPaymentsAmount(t *testing.T) {
 	})
 
 	t.Run("Not Found", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "TransactionId", "Payment", "Size"}).AddRow("dataitem", "transaction", "unpaid", 1000))
 		arweave := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) }))
 		defer arweave.Close()
 
@@ -108,7 +108,7 @@ func TestCheckPaymentsConfirmations(t *testing.T) {
 
 	assert.NoError(t, err)
 	t.Run("Success", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment"}).AddRow("dataitem", "transaction", "confirmed"))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "TransactionId", "Payment"}).AddRow("dataitem", "transaction", "confirmed"))
 		mock.ExpectBegin()
 		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "payment"=$1 WHERE id = $2`)).WithArgs("paid", "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectCommit()
@@ -131,7 +131,7 @@ func TestCheckPaymentsConfirmations(t *testing.T) {
 	})
 
 	t.Run("Not Enough Confirmation", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment"}).AddRow("dataitem", "transaction", "confirmed"))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "TransactionId", "Payment"}).AddRow("dataitem", "transaction", "confirmed"))
 		arweave := httptest.NewServer(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
@@ -168,7 +168,7 @@ func TestSendPayments(t *testing.T) {
 	}))
 
 	t.Run("Success", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "URL"}).AddRow("dataitem", "transaction", "paid", bun.URL[7:]))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "TransactionId", "Payment", "URL"}).AddRow("dataitem", "transaction", "paid", bun.URL[7:]))
 		mock.ExpectBegin()
 		mock.ExpectExec(regexp.QuoteMeta(`UPDATE "orders" SET "status"=$1 WHERE id = $2`)).WithArgs("sent", "dataitem").WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectCommit()
@@ -199,7 +199,7 @@ func TestSendPayments(t *testing.T) {
 	})
 
 	t.Run("Success - 3, Fail 1", func(t *testing.T) {
-		rows := sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "URL", "Size"})
+		rows := sqlmock.NewRows([]string{"Id", "TransactionId", "Payment", "URL", "Size"})
 		rows.AddRow("dataitem-1", "transaction-1", "paid", bun.URL[7:], "1000")
 		rows.AddRow("dataitem-2", "transaction-2", "paid", bun.URL[7:], "1000")
 		rows.AddRow("dataitem-3", "transaction-3", "paid", bun.URL[7:], "1000")
@@ -248,7 +248,7 @@ func TestSendPayments(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 	t.Run("Fail Gateway", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "TransactionID", "Payment", "URL"}).AddRow("dataitem", "transaction", "paid", bun.URL[7:]))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "TransactionId", "Payment", "URL"}).AddRow("dataitem", "transaction", "paid", bun.URL[7:]))
 
 		arweave := httptest.NewServer(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

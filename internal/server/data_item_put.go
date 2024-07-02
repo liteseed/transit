@@ -10,7 +10,7 @@ import (
 
 type DataItemPutResponse struct {
 	ID        string `json:"id"`
-	PaymentID string `json:"payment_id"`
+	PaymentID string `json:"paymentId"`
 }
 
 // Update payment id to data-item godoc
@@ -19,18 +19,18 @@ type DataItemPutResponse struct {
 // @Tags         Upload
 // @Accept       json
 // @Produce      json
-// @Param        id               path      string  true  "Data-Item id"
-// @Param        payment_id       path      string  true  "Payment id"
+// @Param        id               path      string              true  "data-item id"
+// @Param        paymentId        path      string              true  "payment id"
 // @Success      200              {object}  DataItemPutResponse
-// @Failure      400,404,424,500  {object}  HTTPError
+// @Failure      400,404          {object}  HTTPError
 // @Router       /tx/{id}/{payment_id} [put]
-func (srv *Server) DataItemPut(context *gin.Context) {
-	dataItemID := context.Param("id")
-	paymentID := context.Param("payment_id")
-	err := srv.database.UpdateOrder(dataItemID, &schema.Order{TransactionID: paymentID, Status: schema.Queued})
+func (srv *Server) DataItemPut(ctx *gin.Context) {
+	dataItemID := ctx.Param("id")
+	paymentID := ctx.Param("payment_id")
+	err := srv.database.UpdateOrder(dataItemID, &schema.Order{TransactionId: paymentID, Status: schema.Queued})
 	if err != nil {
-		context.Status(http.StatusInternalServerError)
+		NewError(ctx, http.StatusNotFound, err)
 		return
 	}
-	context.JSON(http.StatusAccepted, DataItemPutResponse{ID: dataItemID, PaymentID: paymentID})
+	ctx.JSON(http.StatusAccepted, DataItemPutResponse{ID: dataItemID, PaymentID: paymentID})
 }

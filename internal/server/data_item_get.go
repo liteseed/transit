@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,21 +14,22 @@ import (
 // @Tags         Upload
 // @Accept       json
 // @Produce      json
-// @Param        id           path      string  true  "ID of the data-item"
-// @Success      200          {string}  dataitem
-// @Failure      404,424,500  {object}  HTTPError
+// @Param        id       path      string    true  "ID of the data-item"
+// @Success      200      {string}  dataitem
+// @Failure      404,424  {object}  HTTPError
 // @Router       /tx/{id} [get]
 func (srv *Server) DataItemGet(ctx *gin.Context) {
 	id := ctx.Param("id")
 	o, err := srv.database.GetOrder(id)
 	if err != nil {
-		NewError(ctx, 404, err)
+		log.Println(err)
+		NewError(ctx, http.StatusNotFound, fmt.Errorf("not found %s", id))
 		return
 	}
 
-	raw, err := srv.bundler.DataItemGet(o.URL, o.ID)
+	raw, err := srv.bundler.DataItemGet(o.URL, o.Id)
 	if err != nil {
-		NewError(ctx, 424, err)
+		NewError(ctx, http.StatusFailedDependency, err)
 		return
 	}
 

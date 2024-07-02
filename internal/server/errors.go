@@ -1,6 +1,8 @@
 package server
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
 
 // NewError example
 func NewError(ctx *gin.Context, status int, err error) {

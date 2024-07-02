@@ -19,29 +19,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/": {
-            "get": {
-                "description": "Get the current status of the server",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Server"
-                ],
-                "summary": "Get status of the server",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/server.StatusResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/price/{bytes}": {
             "get": {
                 "description": "Get the current price of data upload using the Liteseed Network.\nIt returns the price of upload in wei and the address to pay.",
@@ -184,24 +161,15 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/server.HTTPError"
                         }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
                     }
                 }
             }
         },
         "/tx/{id}/data": {
             "get": {
-                "description": "get only the data of a posted data-item",
+                "description": "Get only the data of a posted data-item. It tries to automatically detect mime-type.\nYou can specify the response mime-type by either sending an mime-type query parameter or an accept header in the request.\nSupported mime-type are listed here - https://github.com/gabriel-vasile/mimetype/blob/master/supported_mimes.md.\nIf all else fails defaults to ` + "`" + `application/octet-stream` + "`" + `",
                 "consumes": [
                     "application/json"
-                ],
-                "produces": [
-                    "application/octet-stream"
                 ],
                 "tags": [
                     "Upload"
@@ -210,10 +178,16 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID of the Data-Item",
+                        "description": "ID of the data-Item",
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mime type of the response",
+                        "name": "mime-type",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -310,15 +284,15 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Data-Item id",
+                        "description": "data-item id",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Payment id",
-                        "name": "payment_id",
+                        "description": "payment id",
+                        "name": "paymentId",
                         "in": "path",
                         "required": true
                     }
@@ -338,18 +312,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
-                    },
-                    "424": {
-                        "description": "Failed Dependency",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/server.HTTPError"
                         }
@@ -394,7 +356,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "payment_id": {
+                "paymentId": {
                     "type": "string"
                 }
             }
@@ -424,21 +386,6 @@ const docTemplate = `{
                     "type": "string",
                     "format": "string",
                     "example": "1000000000000"
-                }
-            }
-        },
-        "server.StatusResponse": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "format": "string",
-                    "example": "transit"
-                },
-                "version": {
-                    "type": "string",
-                    "format": "string",
-                    "example": "v0.0.1"
                 }
             }
         }

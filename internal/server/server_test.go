@@ -6,21 +6,18 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"regexp"
 	"strconv"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/liteseed/aogo"
-	"github.com/liteseed/goar/tag"
 	"github.com/liteseed/goar/wallet"
 	"github.com/liteseed/sdk-go/contract"
 	"github.com/liteseed/transit/internal/bundler"
-	"github.com/liteseed/transit/internal/database"
 	"github.com/liteseed/transit/internal/database/schema"
+	"github.com/liteseed/transit/test"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/postgres"
 )
 
 func TestNewServer(t *testing.T) {
@@ -37,7 +34,7 @@ func TestStatusHandler(t *testing.T) {
 	srv.server.Handler.ServeHTTP(rcd, req)
 
 	assert.Equal(t, http.StatusOK, rcd.Code)
-	assert.Equal(t, `{"Name":"Transit","Version":"test"}`, rcd.Body.String())
+	assert.Equal(t, `{"name":"Transit","version":"test"}`, rcd.Body.String())
 }
 
 func TestPriceGet(t *testing.T) {
@@ -69,14 +66,14 @@ func TestPriceGet(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/price/invalid", nil)
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"size should be between 1 and 2^32-1"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"byte size should be between 1 and 2^32-1"}`, rcd.Body.String())
 	})
 	t.Run("Fail:Invalid:/price/0", func(t *testing.T) {
 		rcd := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/price/0", nil)
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"size should be between 1 and 2^32-1"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"byte size should be between 1 and 2^32-1"}`, rcd.Body.String())
 	})
 
 	t.Run("Fail:Invalid:/price/-10", func(t *testing.T) {
@@ -84,7 +81,7 @@ func TestPriceGet(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/price/-10", nil)
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"size should be between 1 and 2^32-1"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"byte size should be between 1 and 2^32-1"}`, rcd.Body.String())
 	})
 	t.Run("Fail:Gateway", func(t *testing.T) {
 		w, err := wallet.FromPath("../../test/signer.json", "")
@@ -95,39 +92,28 @@ func TestPriceGet(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/price/1024", nil)
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusFailedDependency, rcd.Code)
-		assert.Equal(t, `{"error":"failed to fetch price"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":424,"message":"failed to fetch price"}`, rcd.Body.String())
 	})
 }
 
 func TestDataItemGet(t *testing.T) {
-	d, err := os.ReadFile("../../test/dataitem")
-	assert.NoError(t, err)
-	b := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(d)
-			assert.NoError(t, err)
-		}))
+	d := test.DataItem()
+	b := test.Bundler(d)
 	defer b.Close()
 
-	mockDb, mock, _ := sqlmock.New()
-	db, err := database.FromDialector(postgres.New(postgres.Config{
-		Conn:       mockDb,
-		DriverName: "postgres",
-	}))
-	assert.NoError(t, err)
+	mock, db := test.Database()
 
 	srv, _ := New(":8080", "test", WithDatabase(db), WithBundler(bundler.New()))
 
 	t.Run("Success", func(t *testing.T) {
-		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"ID", "URL"}).AddRow("1", b.URL[7:]))
+		mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"Id", "URL"}).AddRow("1", b.URL[7:]))
 
 		rcd := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/tx/1", nil)
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusOK, rcd.Code)
-		assert.Equal(t, d, rcd.Body.Bytes())
+		assert.Equal(t, d.Raw, rcd.Body.Bytes())
 	})
 
 	t.Run("Fail:NotFound", func(t *testing.T) {
@@ -138,43 +124,29 @@ func TestDataItemGet(t *testing.T) {
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusNotFound, rcd.Code)
-		assert.Equal(t, `{"error":"data-item does not exist"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":404,"message":"not found 2"}`, rcd.Body.String())
 	})
 }
 
 func TestDataItemPost(t *testing.T) {
-	w, err := wallet.FromPath("../../test/signer.json", "")
-	assert.NoError(t, err)
+	g := test.Gateway()
+	w := test.Wallet(g.URL)
 
-	d := w.CreateDataItem([]byte{1, 2, 3}, "", "", &[]tag.Tag{})
-	_, err = w.SignDataItem(d)
-	assert.NoError(t, err)
+	d := test.DataItem()
 
-	b := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, r *http.Request) {
-		_, err = writer.Write([]byte(fmt.Sprintf(`{"id":"%s","owner":"%s","deadline_height":"%d","fastFinalityIndexes":["localhost"],"dataCaches":["localhost"],"version":"1"}`, d.ID, w.Signer.Address, 199)))
-		assert.NoError(t, err)
-	}))
+	b := test.Bundler(d)
 	defer b.Close()
 
-	mockDb, mock, _ := sqlmock.New()
-	db, err := database.FromDialector(postgres.New(postgres.Config{
-		Conn:       mockDb,
-		DriverName: "postgres",
-	}))
-
-	assert.NoError(t, err)
+	mock, db := test.Database()
 
 	cu := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err = w.Write([]byte(fmt.Sprintf(`{"Messages":[{"Data":"{\"id\":\"staker\",\"reputation\":0,\"url\":\"%s\"}"}]}`, b.URL[7:])))
+		_, err := w.Write([]byte(fmt.Sprintf(`{"Messages":[{"Data":"{\"id\":\"staker\",\"reputation\":0,\"url\":\"%s\"}"}]}`, b.URL[7:])))
 		assert.NoError(t, err)
 
 	}))
 	defer cu.Close()
 
-	mu := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(`{"id":"id", "message": ""}`))
-		assert.NoError(t, err)
-	}))
+	mu := test.MU()
 	defer mu.Close()
 
 	ao, err := aogo.New(aogo.WthCU(cu.URL), aogo.WthMU(mu.URL))
@@ -206,7 +178,7 @@ func TestDataItemPost(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/tx", bytes.NewBuffer(d.Raw))
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"required header(s) - content-type, content-length"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"required header(s) - content-type, content-length"}`, rcd.Body.String())
 	})
 	t.Run("Invalid", func(t *testing.T) {
 		rcd := httptest.NewRecorder()
@@ -217,7 +189,7 @@ func TestDataItemPost(t *testing.T) {
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
 	})
 	t.Run("Invalid Content Type", func(t *testing.T) {
 		rcd := httptest.NewRecorder()
@@ -228,7 +200,7 @@ func TestDataItemPost(t *testing.T) {
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"required header(s) - content-type: application/octet-stream"}`, rcd.Body.String())
 	})
 	t.Run("Invalid Content Length", func(t *testing.T) {
 		rcd := httptest.NewRecorder()
@@ -239,7 +211,7 @@ func TestDataItemPost(t *testing.T) {
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"content-length, body: length mismatch (-100, 1047)"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"content-length, body: length mismatch (-100, 1047)"}`, rcd.Body.String())
 	})
 
 	t.Run("Nil Body", func(t *testing.T) {
@@ -250,7 +222,7 @@ func TestDataItemPost(t *testing.T) {
 		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"cannot read nil body"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"cannot read nil body"}`, rcd.Body.String())
 	})
 
 	t.Run("Invalid Body", func(t *testing.T) {
@@ -261,7 +233,7 @@ func TestDataItemPost(t *testing.T) {
 		req.Header.Set("content-length", strconv.Itoa(len(d.Raw)))
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"content-length, body: length mismatch (1047, 3)"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"content-length, body: length mismatch (1047, 3)"}`, rcd.Body.String())
 	})
 
 	t.Run("Invalid Data Item", func(t *testing.T) {
@@ -272,20 +244,13 @@ func TestDataItemPost(t *testing.T) {
 		req.Header.Set("content-length", "3")
 		srv.server.Handler.ServeHTTP(rcd, req)
 		assert.Equal(t, http.StatusBadRequest, rcd.Code)
-		assert.Equal(t, `{"error":"failed to decode data item"}`, rcd.Body.String())
+		assert.Equal(t, `{"code":400,"message":"failed to decode data item"}`, rcd.Body.String())
 
 	})
 }
 
 func TestDataItemPut(t *testing.T) {
-	mockDb, mock, _ := sqlmock.New()
-	db, err := database.FromDialector(postgres.New(postgres.Config{
-		Conn:       mockDb,
-		DriverName: "postgres",
-	}))
-
-	assert.NoError(t, err)
-
+	mock, db := test.Database()
 	srv, err := New(":8000", "test", WithDatabase(db))
 	assert.NoError(t, err)
 
@@ -300,6 +265,6 @@ func TestDataItemPut(t *testing.T) {
 		srv.server.Handler.ServeHTTP(rcd, req)
 
 		assert.Equal(t, http.StatusAccepted, rcd.Code)
-		assert.Equal(t, "{\"id\":\"dataitem\",\"payment_id\":\"transaction\"}", rcd.Body.String())
+		assert.Equal(t, "{\"id\":\"dataitem\",\"paymentId\":\"transaction\"}", rcd.Body.String())
 	})
 }

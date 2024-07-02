@@ -23,7 +23,7 @@ type PriceGetResponse struct {
 // @Produce      json
 // @Param        bytes             path      int  true  "Size of Data" minimum(1) maximum(2147483647)
 // @Success      200               {object}  PriceGetResponse
-// @Failure      400,424,500   {object}  HTTPError
+// @Failure      400,424,500       {object}  HTTPError
 // @Router       /price/{bytes} [get]
 func (srv *Server) PriceGet(ctx *gin.Context) {
 	b, valid := ctx.Params.Get("bytes")
