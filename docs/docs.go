@@ -73,7 +73,7 @@ const docTemplate = `{
         },
         "/tx/": {
             "post": {
-                "description": "Post your data in a specified ANS-104 data-item format.",
+                "description": "Post your data using liteseed",
                 "consumes": [
                     "application/json"
                 ],
@@ -83,16 +83,7 @@ const docTemplate = `{
                 "tags": [
                     "Upload"
                 ],
-                "summary": "Post a data-item",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID of the data-item",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
+                "summary": "Post data",
                 "responses": {
                     "200": {
                         "description": "OK",

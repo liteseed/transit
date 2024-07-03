@@ -96,13 +96,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Post your data in a specified ANS-104 data-item format.
-      parameters:
-      - description: ID of the data-item
-        in: path
-        name: id
-        required: true
-        type: string
+      description: Post your data using liteseed
       produces:
       - application/json
       responses:
@@ -122,7 +116,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/server.HTTPError'
-      summary: Post a data-item
+      summary: Post data
       tags:
       - Upload
   /tx/{id}:
