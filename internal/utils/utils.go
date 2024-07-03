@@ -20,7 +20,7 @@ func CalculatePriceWithFee(p string) string {
 
 func ParseUrl(u string) (string, error) {
 	if gin.Mode() == gin.DebugMode {
-		return "https://" + u, nil
+		return "http://" + u, nil
 	}
 	p, err := url.Parse(u)
 	if err != nil {
