@@ -16,7 +16,7 @@ type DataItemPutResponse struct {
 // Update payment id to data-item godoc
 // @Summary      Send a payment id for a data-item
 // @Description  Once a payment is made send a transaction id for a data-item
-// @Tags         Upload
+// @Tags         Payment
 // @Accept       json
 // @Produce      json
 // @Param        id               path      string              true  "data-item id"

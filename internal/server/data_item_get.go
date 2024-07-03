@@ -11,7 +11,7 @@ import (
 // Get a complete data-item godoc
 // @Summary      Get a posted data-item
 // @Description  get all the fields of a posted data-item
-// @Tags         Upload
+// @Tags         Fetch
 // @Accept       json
 // @Produce      json
 // @Param        id       path      string    true  "ID of the data-item"

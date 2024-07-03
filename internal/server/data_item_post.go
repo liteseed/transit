@@ -40,8 +40,8 @@ type Transaction struct {
 	Quantity string `json:"quantity"`
 }
 
-func parseBody(context *gin.Context, contentLength int) ([]byte, error) {
-	rawData, err := context.GetRawData()
+func parseBody(ctx *gin.Context, contentLength int) ([]byte, error) {
+	rawData, err := ctx.GetRawData()
 	if err != nil {
 		return nil, err
 	}

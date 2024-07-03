@@ -2,35 +2,16 @@ package server
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/liteseed/goar/tag"
 	"github.com/liteseed/goar/transaction/data_item"
 	"github.com/liteseed/transit/internal/database/schema"
 )
-
-
-
-type DataPostRequestHeader struct {
-	ContentType   *string `header:"content-type" binding:"required"`
-	ContentLength *string `header:"content-length" binding:"required"`
-}
-
-func parse(ctx *gin.Context) (*DataPostRequestHeader, error) {
-	header := &DataPostRequestHeader{}
-	if err := ctx.ShouldBindHeader(header); err != nil {
-		return nil, errors.New("required header(s) - content-type, content-length")
-	}
-	if *header.ContentType != "" {
-		return nil, errors.New("required header(s) - content-type")
-	}
-	if *header.ContentLength == "0" {
-		return nil, errors.New("required header(s) - content-length")
-	}
-	return header, nil
-}
 
 // Post a data to Liteseed godoc
 // @Summary      Post data
@@ -42,49 +23,61 @@ func parse(ctx *gin.Context) (*DataPostRequestHeader, error) {
 // @Failure      400,424,500  {object}  HTTPError
 // @Router       /tx/ [post]
 func (srv *Server) DataPost(ctx *gin.Context) {
-	header, err := parse(ctx)
+	file, err := ctx.FormFile("file")
 	if err != nil {
 		NewError(ctx, http.StatusBadRequest, err)
 		return
 	}
 
-	contentLength, err := strconv.Atoi(*header.ContentLength)
-	if err != nil {
-		NewError(ctx, http.StatusBadRequest, err)
-		return
-	}
-	rawData, err := parseBody(ctx, contentLength)
-	if err != nil {
-		NewError(ctx, http.StatusBadRequest, err)
-		return
-	}
-	dataItem := data_item.New(rawData, "", "", nil)
+	tags := []tag.Tag{}
 
-	_, err = srv.wallet.SignDataItem(dataItem)
+	tagsString := ctx.PostFormArray("tags[]")
+	for i, tagValue := range tagsString {
+		tags = append(tags, tag.Tag{Name: strconv.Itoa(i), Value: tagValue})
+	}
+	mf, err := file.Open()
+	if err != nil {
+		NewError(ctx, http.StatusBadRequest, err)
+		return
+	}
+	defer mf.Close()
+
+	raw, err := io.ReadAll(mf)
+	if err != nil {
+		NewError(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	log.Println(len(raw))
+	d := data_item.New(raw, "", "", &tags)
+
+	err = d.Sign(srv.wallet.Signer)
 	if err != nil {
 		log.Println(err)
 		NewError(ctx, http.StatusInternalServerError, errors.New("failed to sign data item"))
 		return
 	}
 
-	staker, err := srv.contract.Initiate(dataItem.ID, contentLength)
+	staker, err := srv.contract.Initiate(d.ID, len(d.Raw))
 	if err != nil {
-		NewError(ctx, http.StatusFailedDependency, err)
+		log.Println(err)
+		NewError(ctx, http.StatusFailedDependency, errors.New("failed to initiate upload"))
 		return
 	}
-	res, err := srv.bundler.DataItemPost(staker.URL, dataItem.Raw)
+	res, err := srv.bundler.DataItemPost(staker.URL, d.Raw)
 	if err != nil {
-		NewError(ctx, http.StatusFailedDependency, err)
+		log.Println(err)
+		NewError(ctx, http.StatusFailedDependency, errors.New("failed to send to bundler"))
 		return
 	}
 
 	o := &schema.Order{
-		Id:      dataItem.ID,
+		Id:      d.ID,
 		Address: staker.ID,
 		URL:     staker.URL,
 		Payment: schema.Unpaid,
 		Status:  schema.Created,
-		Size:    len(dataItem.Raw),
+		Size:    len(d.Raw),
 	}
 
 	err = srv.database.CreateOrder(o)

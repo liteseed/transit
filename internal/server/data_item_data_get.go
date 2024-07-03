@@ -15,7 +15,7 @@ import (
 // @Description  You can specify the response mime-type by either sending an mime-type query parameter or an accept header in the request.
 // @Description  Supported mime-type are listed here - https://github.com/gabriel-vasile/mimetype/blob/master/supported_mimes.md.
 // @Description  If all else fails defaults to `application/octet-stream`
-// @Tags         Upload
+// @Tags         Fetch
 // @Accept       json
 // @Param        id           path      string    true      "ID of the data-Item"
 // @Param        mime-type    query     string    false     "Mime type of the response"

@@ -10,7 +10,7 @@ import (
 // @Summary      Get the status of a data-item
 // @Description  Get the current status of a posted data-item.
 // @Description  Response "created", "queued", "sent", "confirmed", "failed", "invalid"
-// @Tags         Upload
+// @Tags         Fetch
 // @Accept       json
 // @Produce      json
 // @Param        id            path          string    true  "ID of the data-item"
