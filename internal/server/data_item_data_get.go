@@ -56,7 +56,7 @@ func (srv *Server) DataItemDataGet(ctx *gin.Context) {
 		NewError(ctx, http.StatusInternalServerError, err)
 		return
 	}
-	b, err := crypto.Base64Decode(d.Data)
+	b, err := crypto.Base64URLDecode(d.Data)
 	if err != nil {
 		NewError(ctx, http.StatusInternalServerError, err)
 		return
