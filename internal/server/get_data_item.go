@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -9,7 +10,7 @@ func (srv *Server) GetDataItem(ctx *gin.Context) {
 	id := ctx.Param("id")
 	o, err := srv.database.GetOrder(id)
 	if err != nil {
-		NewError(ctx, http.StatusNotFound, err)
+		NewError(ctx, http.StatusNotFound, fmt.Errorf("not found %s", id))
 		return
 	}
 
@@ -19,5 +20,5 @@ func (srv *Server) GetDataItem(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.Data(http.StatusOK, "application/octet-stream", res)
 }
