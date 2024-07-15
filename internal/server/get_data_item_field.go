@@ -11,11 +11,10 @@ import (
 	"github.com/liteseed/goar/transaction/data_item"
 )
 
-// GetDataItem
+// GetDataItemField
 //
 // Get data-item field godoc
 // @Summary      Get a field of a data-item
-// @Description  If you choose to skip field  the whole data-item is returned.
 // @Description  Get only the specified field of a posted data-item.
 // @Description  In case the specified field is data it tries to automatically detect mime-type.
 // @Description  You can specify the response mime-type by either sending a mime-type query parameter or an accept header in the request.
@@ -28,7 +27,7 @@ import (
 // @Success      200 		  {bytes}   data
 // @Failure      404,424,500  {object}  HTTPError
 // @Router       /tx/{id}/{field} [get]
-func (srv *Server) GetDataItem(ctx *gin.Context) {
+func (srv *Server) GetDataItemField(ctx *gin.Context) {
 	id := ctx.Param("id")
 	field := ctx.Param("field")
 
@@ -49,9 +48,6 @@ func (srv *Server) GetDataItem(ctx *gin.Context) {
 		return
 	}
 	switch field {
-	case "":
-		ctx.Data(http.StatusOK, ContentTypeOctetStream, d.Raw)
-		return
 	case "anchor":
 		ctx.JSON(http.StatusOK, d.Anchor)
 		return
