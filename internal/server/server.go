@@ -12,10 +12,7 @@ import (
 	"github.com/liteseed/transit/internal/database"
 )
 
-const (
-	CONTENT_TYPE_OCTET_STREAM = "application/octet-stream"
-	MAX_DATA_SIZE             = uint(2 * 1024 * 1024 * 1024)
-)
+const ContentTypeOctetStream = "application/octet-stream"
 
 type Server struct {
 	bundler  *bundler.Bundler
@@ -27,7 +24,7 @@ type Server struct {
 }
 
 // @title          Liteseed API
-// @version        0.0.1
+// @version        0.0.6
 // @description    The API is currently live at https://api.liteseed.xyz
 // @contact.name   API Support
 // @contact.url    https://liteseed.xyz/support
@@ -44,8 +41,7 @@ func New(port string, version string, options ...func(*Server)) (*Server, error)
 
 	engine.GET("/", s.Status)
 	engine.GET("/price/:bytes", s.PriceGet)
-	engine.GET("/tx/:id", s.DataItemGet)
-	engine.GET("/tx/:id/data", s.DataItemDataGet)
+	engine.GET("/tx/:id/:field", s.GetDataItem)
 	engine.GET("/tx/:id/status", s.DataItemStatusGet)
 	engine.POST("/tx", s.DataItemPost)
 	engine.PUT("/tx/:id/:payment_id", s.DataItemPut)
@@ -59,32 +55,32 @@ func New(port string, version string, options ...func(*Server)) (*Server, error)
 }
 
 func WithBundler(b *bundler.Bundler) func(*Server) {
-	return func(s *Server) {
-		s.bundler = b
+	return func(srv *Server) {
+		srv.bundler = b
 	}
 }
 
 func WithContracts(contract *contract.Contract) func(*Server) {
-	return func(c *Server) {
-		c.contract = contract
+	return func(srv *Server) {
+		srv.contract = contract
 	}
 }
 
 func WithDatabase(db *database.Database) func(*Server) {
-	return func(c *Server) {
-		c.database = db
+	return func(srv *Server) {
+		srv.database = db
 	}
 }
 
 func WithWallet(w *wallet.Wallet) func(*Server) {
-	return func(c *Server) {
-		c.wallet = w
+	return func(srv *Server) {
+		srv.wallet = w
 	}
 }
-func (s *Server) Start() error {
-	return s.server.ListenAndServe()
+func (srv *Server) Start() error {
+	return srv.server.ListenAndServe()
 }
 
-func (s *Server) Shutdown() error {
-	return s.server.Shutdown(context.TODO())
+func (srv *Server) Shutdown() error {
+	return srv.server.Shutdown(context.TODO())
 }

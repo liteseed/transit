@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// DataItemStatusGet
+//
 // Get the status of the posted data-item godoc
 // @Summary      Get the status of a data-item
 // @Description  Get the current status of a posted data-item.
@@ -13,7 +15,7 @@ import (
 // @Tags         Fetch
 // @Accept       json
 // @Produce      json
-// @Param        id            path          string    true  "ID of the data-item"
+// @Param        id            path          string    true  "id of the data-item"
 // @Success      200           {string}      status
 // @Failure      404,424,500   {object}      HTTPError
 // @Router       /tx/{id}/status [get]

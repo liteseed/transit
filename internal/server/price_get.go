@@ -14,6 +14,8 @@ type PriceGetResponse struct {
 	Address string `json:"address" example:"Cbj95zDZBBhmyht6iFlEf7xmSCSVZGw436V6HWmm9Ek" format:"string"`
 }
 
+// PriceGet
+//
 // Price godoc
 // @Summary      Get price of upload
 // @Description  Get the current price of data upload using the Liteseed Network.

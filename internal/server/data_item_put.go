@@ -9,10 +9,12 @@ import (
 )
 
 type DataItemPutResponse struct {
-	ID        string `json:"id"`
-	PaymentID string `json:"paymentId"`
+	Id        string `json:"id"`
+	PaymentId string `json:"paymentId"`
 }
 
+// DataItemPut
+//
 // Update payment id to data-item godoc
 // @Summary      Send a payment id for a data-item
 // @Description  Once a payment is made send a transaction id for a data-item
@@ -32,5 +34,5 @@ func (srv *Server) DataItemPut(ctx *gin.Context) {
 		NewError(ctx, http.StatusNotFound, err)
 		return
 	}
-	ctx.JSON(http.StatusAccepted, DataItemPutResponse{ID: dataItemID, PaymentID: paymentID})
+	ctx.JSON(http.StatusAccepted, DataItemPutResponse{Id: dataItemID, PaymentId: paymentID})
 }

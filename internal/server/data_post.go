@@ -13,15 +13,18 @@ import (
 	"github.com/liteseed/transit/internal/database/schema"
 )
 
-// Post a data to Liteseed godoc
+// DataPost
+//
+// Post unsigned data to Liteseed godoc
 // @Summary      Post data
-// @Description  Post your data using liteseed
+// @Description  Post data or file to Liteseed.
 // @Tags         Upload
 // @Accept       json
 // @Produce      json
-// @Success      200          {object}  DataItemPostResponse
+// @Success      200          {object}  PostResponse
 // @Failure      400,424,500  {object}  HTTPError
 // @Router       /tx/ [post]
+
 func (srv *Server) DataPost(ctx *gin.Context) {
 	file, err := ctx.FormFile("file")
 	if err != nil {

@@ -71,9 +71,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/tx/": {
+        "/tx": {
             "post": {
-                "description": "Post your data using liteseed",
+                "description": "Post your data in a specified ANS-104 data-item format.",
                 "consumes": [
                     "application/json"
                 ],
@@ -83,113 +83,16 @@ const docTemplate = `{
                 "tags": [
                     "Upload"
                 ],
-                "summary": "Post data",
+                "summary": "Post a data-item",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/server.DataItemPostResponse"
+                            "$ref": "#/definitions/server.PostResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
-                    },
-                    "424": {
-                        "description": "Failed Dependency",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
-                    }
-                }
-            }
-        },
-        "/tx/{id}": {
-            "get": {
-                "description": "get all the fields of a posted data-item",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Upload"
-                ],
-                "summary": "Get a posted data-item",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID of the data-item",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
-                    },
-                    "424": {
-                        "description": "Failed Dependency",
-                        "schema": {
-                            "$ref": "#/definitions/server.HTTPError"
-                        }
-                    }
-                }
-            }
-        },
-        "/tx/{id}/data": {
-            "get": {
-                "description": "Get only the data of a posted data-item. It tries to automatically detect mime-type.\nYou can specify the response mime-type by either sending an mime-type query parameter or an accept header in the request.\nSupported mime-type are listed here - https://github.com/gabriel-vasile/mimetype/blob/master/supported_mimes.md.\nIf all else fails defaults to ` + "`" + `application/octet-stream` + "`" + `",
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Upload"
-                ],
-                "summary": "Get data of a data-item",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID of the data-Item",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Mime type of the response",
-                        "name": "mime-type",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "bytes"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/server.HTTPError"
                         }
@@ -219,13 +122,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Upload"
+                    "Fetch"
                 ],
                 "summary": "Get the status of a data-item",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID of the data-item",
+                        "description": "id of the data-item",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -236,6 +139,59 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/server.HTTPError"
+                        }
+                    },
+                    "424": {
+                        "description": "Failed Dependency",
+                        "schema": {
+                            "$ref": "#/definitions/server.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/server.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/tx/{id}/{field}": {
+            "get": {
+                "description": "If you choose to skip field  the whole data-item is returned.\nGet only the specified field of a posted data-item.\nIn case the specified field is data it tries to automatically detect mime-type.\nYou can specify the response mime-type by either sending a mime-type query parameter or an accept header in the request.\nSupported mime-type are listed here - https://github.com/gabriel-vasile/mimetype/blob/master/supported_mimes.md.\nIf all else fails defaults to ` + "`" + `application/octet-stream` + "`" + `",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Fetch"
+                ],
+                "summary": "Get a field of a data-item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the data-item",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "mime type of the response",
+                        "name": "mime-type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bytes"
                         }
                     },
                     "404": {
@@ -269,7 +225,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Upload"
+                    "Payment"
                 ],
                 "summary": "Send a payment id for a data-item",
                 "parameters": [
@@ -312,7 +268,31 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "server.DataItemPostResponse": {
+        "server.DataItemPutResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "paymentId": {
+                    "type": "string"
+                }
+            }
+        },
+        "server.HTTPError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "format": "integer"
+                },
+                "message": {
+                    "type": "string",
+                    "format": "string"
+                }
+            }
+        },
+        "server.PostResponse": {
             "type": "object",
             "properties": {
                 "dataCaches": {
@@ -341,30 +321,6 @@ const docTemplate = `{
                 }
             }
         },
-        "server.DataItemPutResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "paymentId": {
-                    "type": "string"
-                }
-            }
-        },
-        "server.HTTPError": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer",
-                    "format": "integer"
-                },
-                "message": {
-                    "type": "string",
-                    "format": "string"
-                }
-            }
-        },
         "server.PriceGetResponse": {
             "type": "object",
             "properties": {
@@ -385,7 +341,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.0.1",
+	Version:          "0.0.6",
 	Host:             "https://api.liteseed.xyz",
 	BasePath:         "",
 	Schemes:          []string{},

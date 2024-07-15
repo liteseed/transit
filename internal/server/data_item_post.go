@@ -13,19 +13,19 @@ import (
 	"github.com/liteseed/transit/internal/database/schema"
 )
 
-type DataItemPostResponse = bundler.DataItemPostResponse
+type PostResponse = bundler.DataItemPostResponse
 
 type DataItemPostRequestHeader struct {
 	ContentType   *string `header:"content-type" binding:"required"`
 	ContentLength *string `header:"content-length" binding:"required"`
 }
 
-func parseHeaders(context *gin.Context) (*DataItemPostRequestHeader, error) {
+func dataItemPostRequestHeader(ctx *gin.Context) (*DataItemPostRequestHeader, error) {
 	header := &DataItemPostRequestHeader{}
-	if err := context.ShouldBindHeader(header); err != nil {
+	if err := ctx.ShouldBindHeader(header); err != nil {
 		return nil, errors.New("required header(s) - content-type, content-length")
 	}
-	if *header.ContentType != CONTENT_TYPE_OCTET_STREAM {
+	if *header.ContentType != ContentTypeOctetStream {
 		return nil, errors.New("required header(s) - content-type: application/octet-stream")
 	}
 	if *header.ContentLength == "0" {
@@ -40,7 +40,7 @@ type Transaction struct {
 	Quantity string `json:"quantity"`
 }
 
-func parseBody(ctx *gin.Context, contentLength int) ([]byte, error) {
+func dataItemPostRequestBody(ctx *gin.Context, contentLength int) ([]byte, error) {
 	rawData, err := ctx.GetRawData()
 	if err != nil {
 		return nil, err
@@ -52,28 +52,30 @@ func parseBody(ctx *gin.Context, contentLength int) ([]byte, error) {
 	return rawData, nil
 }
 
+// DataItemPost
+//
 // Post a data-item to Liteseed godoc
 // @Summary      Post a data-item
 // @Description  Post your data in a specified ANS-104 data-item format.
 // @Tags         Upload
 // @Accept       json
 // @Produce      json
-// @Success      200          {object}  DataItemPostResponse
+// @Success      200          {object}  PostResponse
 // @Failure      400,424,500  {object}  HTTPError
-// @Router       /tx/ [post]
+// @Router       /tx [post]
 func (srv *Server) DataItemPost(ctx *gin.Context) {
-	header, err := parseHeaders(ctx)
+	headers, err := dataItemPostRequestHeader(ctx)
 	if err != nil {
 		NewError(ctx, http.StatusBadRequest, err)
 		return
 	}
 
-	contentLength, err := strconv.Atoi(*header.ContentLength)
+	contentLength, err := strconv.Atoi(*headers.ContentLength)
 	if err != nil {
 		NewError(ctx, http.StatusBadRequest, err)
 		return
 	}
-	rawData, err := parseBody(ctx, contentLength)
+	rawData, err := dataItemPostRequestBody(ctx, contentLength)
 	if err != nil {
 		NewError(ctx, http.StatusBadRequest, err)
 		return

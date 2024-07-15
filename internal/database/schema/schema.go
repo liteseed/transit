@@ -8,7 +8,7 @@ type Status string
 const (
 	// Order
 	Created = "created" // Order Created
-	Queued  = "queued"  // Order Transaction ID added
+	Queued  = "queued"  // Order Transaction Id added
 	Sent    = "sent"    // Order Sent
 
 	Failed = "failed" // Order Failed
