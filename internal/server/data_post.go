@@ -32,7 +32,7 @@ func (srv *Server) DataPost(ctx *gin.Context) {
 		return
 	}
 
-	tags := []tag.Tag{}
+	var tags []tag.Tag
 
 	tagsString := ctx.PostFormArray("tags[]")
 	for i, tagValue := range tagsString {
@@ -51,7 +51,6 @@ func (srv *Server) DataPost(ctx *gin.Context) {
 		return
 	}
 
-	log.Println(len(raw))
 	d := data_item.New(raw, "", "", &tags)
 
 	err = d.Sign(srv.wallet.Signer)

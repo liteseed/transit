@@ -78,6 +78,7 @@ func (srv *Server) GetDataItem(ctx *gin.Context) {
 		b, err := decodeData(d.Data, contentType, accept)
 		if err != nil {
 			NewError(ctx, http.StatusInternalServerError, err)
+			return
 		}
 		ctx.Data(http.StatusOK, contentType, b)
 		return

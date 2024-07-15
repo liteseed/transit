@@ -4,6 +4,6 @@
 data
 dist
 
-config.json
+build/dev/config.json
 logs
 build

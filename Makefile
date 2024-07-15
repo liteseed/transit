@@ -1,6 +1,6 @@
 BINARY_NAME := api
 PKG := github.com/liteseed/api
-VERSION := 0.0.6
+VERSION := 0.0.5
 
 dev:
 	go mod tidy

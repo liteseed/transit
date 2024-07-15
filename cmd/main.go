@@ -17,12 +17,13 @@ import (
 	"github.com/liteseed/transit/internal/database"
 	"github.com/liteseed/transit/internal/server"
 	"gopkg.in/natefinch/lumberjack.v2"
-	
 )
+
 var Version string
 
 type StartConfig struct {
 	Database string
+	Driver   string
 	Gateway  string
 	Log      string
 	Port     string
@@ -59,7 +60,7 @@ func main() {
 		),
 	)
 
-	db, err := database.New(config.Database)
+	db, err := database.New(config.Driver, config.Database)
 	if err != nil {
 		log.Fatalln(err)
 	}

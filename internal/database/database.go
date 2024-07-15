@@ -1,8 +1,10 @@
 package database
 
 import (
+	"errors"
 	"github.com/liteseed/transit/internal/database/schema"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -11,20 +13,42 @@ type Database struct {
 	DB *gorm.DB
 }
 
-func New(url string) (*Database, error) {
-	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN:                  url,
-		PreferSimpleProtocol: true, // disables implicit prepared statement usage
-	}), &gorm.Config{
-		CreateBatchSize: 200,
-		Logger:          logger.Default.LogMode(logger.Silent),
-	})
+func New(database string, url string) (*Database, error) {
+	config := &gorm.Config{CreateBatchSize: 200, Logger: logger.Default.LogMode(logger.Silent)}
+	switch database {
+	case "postgres":
+		return Postgres(url, config)
+	case "sqlite":
+		return Sqlite(url, config)
+	default:
+		return nil, errors.New("database not supported")
+	}
+}
+
+func Postgres(url string, config *gorm.Config) (*Database, error) {
+	psql, err := gorm.Open(postgres.Open(url), config)
 	if err != nil {
 		return nil, err
 	}
-	c := &Database{DB: db}
+	db := &Database{DB: psql}
+	err = db.Migrate()
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
 
-	return c, nil
+func Sqlite(url string, config *gorm.Config) (*Database, error) {
+	database, err := gorm.Open(sqlite.Open(url), config)
+	if err != nil {
+		return nil, err
+	}
+	db := &Database{DB: database}
+	err = db.Migrate()
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 func FromDialector(d gorm.Dialector) (*Database, error) {
