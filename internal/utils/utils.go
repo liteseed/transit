@@ -14,7 +14,7 @@ func CalculatePriceWithFee(p string) string {
 	fee := big.NewInt(1000) // ~0.001
 	fee.Quo(cost, fee)
 
-	cost.Add(cost, fee) // cost = cost * fee
+	cost.Add(cost, fee) // cost = cost + cost * fee
 	return cost.String()
 }
 

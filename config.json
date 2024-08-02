@@ -1,0 +1,10 @@
+{
+  "Process": "PWSr59Cf6jxY7aA_cfz69rs0IiJWWbmQA8bAKknHeMo",
+  "Port": ":8000",
+  "Driver": "postgres",
+  "Signer": "./data/signer.json",
+  "Database": "postgresql://localhost:5433/postgres",
+  "Gateway": "http://localhost:1984",
+  "Store": "./data/badger",
+  "Log": "./temp/log"
+}

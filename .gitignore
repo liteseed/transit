@@ -7,3 +7,4 @@ dist
 build/dev/config.json
 logs
 build
+temp
